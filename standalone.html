@@ -219,12 +219,37 @@
         document.body.removeChild(link);
       };
 
-      const handleLoginSubmit = (e) => {
+      const handleLoginSubmit = async (e) => {
         e.preventDefault();
         setLoginError('');
         const q = loginUser.trim().toLowerCase();
         const p = loginPass.trim();
 
+        // 1. Attempt MySQL Database API Authentication
+        try {
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: q, password: p })
+          });
+          const data = await response.json();
+
+          if (data.success && data.operator) {
+            if (data.operator.role === 'superadmin') {
+              window.location.href = 'superadmin.html?role=superadmin';
+              return;
+            }
+            setAdminUser(data.operator);
+            return;
+          } else if (response.status === 401 || response.status === 403) {
+            setLoginError(data.error || 'Invalid credentials or account expired.');
+            return;
+          }
+        } catch (err) {
+          console.log('MySQL API unreachable, falling back to client credential store...');
+        }
+
+        // 2. Client-side fallback authentication
         const match = operators.find(acc => 
           (acc.username.toLowerCase() === q || acc.email.toLowerCase() === q) && acc.password === p
         );
