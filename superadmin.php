@@ -2,69 +2,33 @@
 session_start();
 include_once __DIR__ . '/header.php';
 ?>
-      padding: 1rem 2rem;
-    }
 
-    .navbar-content {
-      max-width: 1400px; margin: 0 auto;
-      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer;
-    }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
-
-    .search-input {
-      width: 100%;
-      padding: 0.65rem 1.2rem;
-      background: rgba(17, 24, 39, 0.6);
-      border: 1px solid var(--border-color);
-      border-radius: 8px; color: #fff; font-size: 0.9rem;
-    }
-
-    .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; text-align: left; }
-    .data-table th, .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
-
-    .pulse-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
-    }
-    .pulse-badge.active { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .pulse-badge.expired { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-  </style>
-</head>
-<body>
   <div id="root"></div>
 
   <script type="text/babel">
     function SuperAdminConsole() {
       const [operators, setOperators] = React.useState([]);
       const [loading, setLoading] = React.useState(true);
-      const [newOp, setNewOp] = React.useState({
-        username: '', password: '', fullName: '', role: 'operator', expiryDate: '2026-12-31',
-        firebaseProject: 'adminto-op-custom', orgId: 'org_custom'
-      });
+      const [error, setError] = React.useState('');
+
+      // Form fields for adding new operator
+      const [username, setUsername] = React.useState('');
+      const [password, setPassword] = React.useState('');
+      const [firebaseProject, setFirebaseProject] = React.useState('adminto-op-custom');
+      const [expiryDate, setExpiryDate] = React.useState('2026-12-31');
 
       const fetchOperators = async () => {
+        setLoading(true);
         try {
           const res = await fetch('api.php?action=get_operators');
           const data = await res.json();
           if (data.success) {
-            setOperators(data.operators);
+            setOperators(data.operators || []);
+          } else {
+            setError(data.error || 'Failed to load operators');
           }
         } catch (err) {
-          console.error(err);
+          setError('Could not connect to MySQL API backend.');
         } finally {
           setLoading(false);
         }
@@ -74,23 +38,34 @@ include_once __DIR__ . '/header.php';
         fetchOperators();
       }, []);
 
-      const handleAddOperatorSubmit = async (e) => {
+      const handleAddOperator = async (e) => {
         e.preventDefault();
-        if (!newOp.username || !newOp.password) return;
+        if (!username || !password) {
+          alert('Please fill in username and password');
+          return;
+        }
 
         try {
           const res = await fetch('api.php?action=add_operator', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newOp)
+            body: JSON.stringify({
+              username: username.trim(),
+              password: password.trim(),
+              firebaseProject: firebaseProject.trim(),
+              expiryDate: expiryDate,
+              role: 'operator',
+              orgId: 'org_' + username.trim()
+            })
           });
           const data = await res.json();
           if (data.success) {
-            alert(`Operator '${newOp.username}' created successfully in MySQL!`);
-            setNewOp({ username: '', password: '', fullName: '', role: 'operator', expiryDate: '2026-12-31', firebaseProject: 'adminto-op-custom', orgId: 'org_custom' });
+            alert('New Operator account & assigned database provisioned successfully!');
+            setUsername('');
+            setPassword('');
             fetchOperators();
           } else {
-            alert('Error: ' + data.error);
+            alert('Error: ' + (data.error || 'Failed to create operator'));
           }
         } catch (err) {
           alert('Network Error');
@@ -164,35 +139,48 @@ include_once __DIR__ . '/header.php';
           <main style={{ maxWidth: '1400px', margin: '2rem auto', padding: '0 1.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             {/* Create Operator Form Card */}
             <div className="glass-panel" style={{ padding: '1.5rem', border: '1px solid rgba(236,72,153,0.3)' }}>
-              <h3 style={{ color: '#ec4899', marginBottom: '1rem' }}>➕ Provision New Operator & Assigned Database</h3>
-              <form onSubmit={handleAddOperatorSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+              <h3 style={{ color: '#fff', fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#ec4899' }}>➕</span> Provision New Operator & Assigned Database
+              </h3>
+              
+              <form onSubmit={handleAddOperator} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignItems: 'end' }}>
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Operator Username</label>
-                  <input type="text" className="search-input" value={newOp.username} onChange={e => setNewOp({...newOp, username: e.target.value})} placeholder="operator_north" required />
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Operator Username</label>
+                  <input type="text" className="search-input" placeholder="operator_north" value={username} onChange={(e) => setUsername(e.target.value)} required />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Password</label>
-                  <input type="password" className="search-input" value={newOp.password} onChange={e => setNewOp({...newOp, password: e.target.value})} placeholder="••••••••" required />
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Password</label>
+                  <input type="password" className="search-input" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Assigned Firebase Project ID</label>
-                  <input type="text" className="search-input" value={newOp.firebaseProject} onChange={e => setNewOp({...newOp, firebaseProject: e.target.value})} placeholder="adminto-north-prod" required />
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Assigned Firebase Project ID</label>
+                  <input type="text" className="search-input" placeholder="adminto-north-region" value={firebaseProject} onChange={(e) => setFirebaseProject(e.target.value)} required />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Access Expiry Date</label>
-                  <input type="date" className="search-input" value={newOp.expiryDate} onChange={e => setNewOp({...newOp, expiryDate: e.target.value})} required />
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Access Expiry Date</label>
+                  <input type="date" className="search-input" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} required />
                 </div>
-                <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-                  <button type="submit" className="btn-primary" style={{ padding: '0.75rem 1.5rem' }}>
+                <div>
+                  <button type="submit" className="btn-primary" style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', width: '100%' }}>
                     Create MySQL Operator Account
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* Operator Licensing List */}
+            {/* Operators Table Card */}
             <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h3 style={{ color: '#fff', marginBottom: '1rem' }}>📋 Configured Operators & Database Tenants ({operators.length})</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h3 style={{ color: '#fff', fontSize: '1.1rem' }}>📱 Configured Operators & Database Tenants ({operators.length})</h3>
+                <button className="btn-secondary" onClick={fetchOperators}>🔄 Refresh List</button>
+              </div>
+
+              {error && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85rem' }}>
+                  ⚠️ {error}
+                </div>
+              )}
+
               <table className="data-table">
                 <thead>
                   <tr>
@@ -206,26 +194,29 @@ include_once __DIR__ . '/header.php';
                 </thead>
                 <tbody>
                   {operators.map(op => {
-                    const isExpired = op.expiryDate && op.expiryDate < todayStr;
+                    const isExpired = op.expiryDate < todayStr;
                     return (
                       <tr key={op.id}>
                         <td>
-                          <div style={{ fontWeight: 600, color: '#fff' }}>{op.username}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{op.email}</div>
+                          <strong style={{ color: '#fff' }}>{op.username}</strong>
+                          <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{op.fullName}</div>
                         </td>
                         <td>
-                          <span style={{ color: op.role === 'superadmin' ? '#ec4899' : '#93c5fd', fontWeight: 600 }}>{op.role}</span>
+                          <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '12px', background: op.role === 'superadmin' ? 'rgba(236,72,153,0.2)' : 'rgba(99,102,241,0.2)', color: op.role === 'superadmin' ? '#f472b6' : '#818cf8' }}>
+                            {op.role}
+                          </span>
                         </td>
-                        <td><code style={{ color: '#34d399' }}>{op.firebaseProject || 'Default'}</code></td>
-                        <td><strong style={{ color: isExpired ? '#f87171' : '#f3f4f6' }}>{op.expiryDate}</strong></td>
+                        <td><code style={{ color: '#93c5fd' }}>{op.firebaseProject}</code></td>
+                        <td><strong>{op.expiryDate}</strong></td>
                         <td>
                           <span className={`pulse-badge ${isExpired ? 'expired' : 'active'}`}>
+                            <span className="pulse-dot"></span>
                             {isExpired ? 'EXPIRED' : 'ACTIVE'}
                           </span>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <button className="btn-secondary" onClick={() => handleExtendExpiry(op)} title="Extend Expiry Date">📅 Extend</button>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button className="btn-secondary" onClick={() => handleExtendExpiry(op)} title="Extend Expiry Date">📅 Extend Date</button>
                             {op.role !== 'superadmin' && (
                               <button className="btn-secondary" onClick={() => handleDeleteOperator(op.id)} style={{ color: '#f87171' }} title="Delete Operator">🗑️ Delete</button>
                             )}
