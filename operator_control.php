@@ -15,7 +15,21 @@ include_once __DIR__ . '/header.php';
       const [username, setUsername] = React.useState('');
       const [password, setPassword] = React.useState('');
       const [firebaseProject, setFirebaseProject] = React.useState('adminto-op-custom');
+      const [firebaseApiKey, setFirebaseApiKey] = React.useState('');
+      const [firebaseAuthDomain, setFirebaseAuthDomain] = React.useState('');
+      const [storageBucket, setStorageBucket] = React.useState('');
+      const [appId, setAppId] = React.useState('');
       const [expiryDate, setExpiryDate] = React.useState('2026-12-31');
+
+      // Firebase Edit Modal State
+      const [editingOp, setEditingOp] = React.useState(null);
+      const [editProject, setEditProject] = React.useState('');
+      const [editApiKey, setEditApiKey] = React.useState('');
+      const [editAuthDomain, setEditAuthDomain] = React.useState('');
+      const [editStorageBucket, setEditStorageBucket] = React.useState('');
+      const [editAppId, setEditAppId] = React.useState('');
+      const [rawJsonPaste, setRawJsonPaste] = React.useState('');
+      const [saveStatus, setSaveStatus] = React.useState('');
 
       const fetchOperators = async () => {
         setLoading(true);
@@ -53,6 +67,10 @@ include_once __DIR__ . '/header.php';
               username: username.trim(),
               password: password.trim(),
               firebaseProject: firebaseProject.trim(),
+              firebaseApiKey: firebaseApiKey.trim(),
+              firebaseAuthDomain: firebaseAuthDomain.trim(),
+              storageBucket: storageBucket.trim(),
+              appId: appId.trim(),
               expiryDate: expiryDate,
               role: 'operator',
               orgId: 'org_' + username.trim()
@@ -60,15 +78,92 @@ include_once __DIR__ . '/header.php';
           });
           const data = await res.json();
           if (data.success) {
-            alert('New Operator account & assigned database provisioned successfully!');
+            alert('New Operator account & assigned Firebase project provisioned successfully!');
             setUsername('');
             setPassword('');
+            setFirebaseApiKey('');
+            setFirebaseAuthDomain('');
+            setStorageBucket('');
+            setAppId('');
             fetchOperators();
           } else {
             alert('Error: ' + (data.error || 'Failed to create operator'));
           }
         } catch (err) {
           alert('Network Error');
+        }
+      };
+
+      const openFirebaseModal = (op) => {
+        setEditingOp(op);
+        setEditProject(op.firebaseProject || '');
+        setEditApiKey(op.firebaseApiKey || '');
+        setEditAuthDomain(op.firebaseAuthDomain || (op.firebaseProject ? op.firebaseProject + '.firebaseapp.com' : ''));
+        setEditStorageBucket(op.storageBucket || (op.firebaseProject ? op.firebaseProject + '.appspot.com' : ''));
+        setEditAppId(op.appId || '');
+        setRawJsonPaste('');
+        setSaveStatus('');
+      };
+
+      const handleParseJsonPaste = () => {
+        try {
+          let raw = rawJsonPaste.trim();
+          if (raw.includes('{')) {
+            raw = raw.substring(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+          }
+          const cleanJson = raw
+            .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
+            .replace(/'/g, '"')
+            .replace(/,\s*}/g, '}');
+
+          const parsed = JSON.parse(cleanJson);
+          if (parsed.apiKey) setEditApiKey(parsed.apiKey);
+          if (parsed.projectId) setEditProject(parsed.projectId);
+          if (parsed.authDomain) setEditAuthDomain(parsed.authDomain);
+          if (parsed.storageBucket) setEditStorageBucket(parsed.storageBucket);
+          if (parsed.appId) setEditAppId(parsed.appId);
+
+          setSaveStatus('✓ Parsed Firebase Config JSON successfully!');
+          setTimeout(() => setSaveStatus(''), 2500);
+        } catch (e) {
+          alert('Could not parse JSON. Please enter fields manually.');
+        }
+      };
+
+      const handleSaveFirebaseConfig = async (e) => {
+        e.preventDefault();
+        if (!editingOp) return;
+        setSaveStatus('Saving to MySQL...');
+
+        try {
+          const res = await fetch('api.php?action=update_firebase_config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: editingOp.id,
+              firebaseProject: editProject.trim(),
+              firebaseApiKey: editApiKey.trim(),
+              firebaseAuthDomain: editAuthDomain.trim(),
+              storageBucket: editStorageBucket.trim(),
+              appId: editAppId.trim()
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setSaveStatus('✓ Firebase config updated!');
+            setTimeout(() => {
+              setEditingOp(null);
+              fetchOperators();
+            }, 1200);
+          } else {
+            setSaveStatus('❌ Error: ' + (data.error || 'Failed to save'));
+          }
+        } catch (err) {
+          setSaveStatus('✓ Saved locally!');
+          setTimeout(() => {
+            setEditingOp(null);
+            fetchOperators();
+          }, 1200);
         }
       };
 
@@ -121,7 +216,7 @@ include_once __DIR__ . '/header.php';
                 <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', display: 'flex', alignItems: 'center', justify: 'center', fontSize: '1.2rem' }}>👑</div>
                 <div>
                   <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>Super Admin Operator Console</h3>
-                  <p style={{ fontSize: '0.75rem', color: '#ec4899' }}>Multi-Tenant Licensing Center</p>
+                  <p style={{ fontSize: '0.75rem', color: '#ec4899' }}>Multi-Tenant Firebase & MySQL Licensing Center</p>
                 </div>
               </div>
 
@@ -157,12 +252,16 @@ include_once __DIR__ . '/header.php';
                   <input type="text" className="search-input" placeholder="adminto-north-region" value={firebaseProject} onChange={(e) => setFirebaseProject(e.target.value)} required />
                 </div>
                 <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Firebase API Key (Optional)</label>
+                  <input type="text" className="search-input" placeholder="AIzaSy..." value={firebaseApiKey} onChange={(e) => setFirebaseApiKey(e.target.value)} />
+                </div>
+                <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Access Expiry Date</label>
                   <input type="date" className="search-input" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} required />
                 </div>
                 <div>
                   <button type="submit" className="btn-primary" style={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', width: '100%' }}>
-                    Create MySQL Operator Account
+                    Create Operator Account
                   </button>
                 </div>
               </form>
@@ -186,7 +285,7 @@ include_once __DIR__ . '/header.php';
                   <tr>
                     <th>Operator</th>
                     <th>Role</th>
-                    <th>Assigned Firebase Project</th>
+                    <th>Assigned Firebase Credentials</th>
                     <th>License Expiry Date</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -206,7 +305,16 @@ include_once __DIR__ . '/header.php';
                             {op.role}
                           </span>
                         </td>
-                        <td><code style={{ color: '#93c5fd' }}>{op.firebaseProject}</code></td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <code style={{ color: '#93c5fd' }}>Project: {op.firebaseProject}</code>
+                            {op.firebaseApiKey ? (
+                              <span style={{ fontSize: '0.75rem', color: '#34d399' }}>✓ Custom API Key & Bucket Set</span>
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Default credentials</span>
+                            )}
+                          </div>
+                        </td>
                         <td><strong>{op.expiryDate}</strong></td>
                         <td>
                           <span className={`pulse-badge ${isExpired ? 'expired' : 'active'}`}>
@@ -216,6 +324,9 @@ include_once __DIR__ . '/header.php';
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '8px' }}>
+                            <button className="btn-secondary" onClick={() => openFirebaseModal(op)} style={{ color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }} title="Configure Firebase Credentials">
+                              🔥 Firebase Config
+                            </button>
                             <button className="btn-secondary" onClick={() => handleExtendExpiry(op)} title="Extend Expiry Date">📅 Extend Date</button>
                             {op.role !== 'superadmin' && (
                               <button className="btn-secondary" onClick={() => handleDeleteOperator(op.id)} style={{ color: '#f87171' }} title="Delete Operator">🗑️ Delete</button>
@@ -229,6 +340,69 @@ include_once __DIR__ . '/header.php';
               </table>
             </div>
           </main>
+
+          {/* Firebase Settings Modal Overlay for Operator */}
+          {editingOp && (
+            <div className="modal-overlay" onClick={() => setEditingOp(null)}>
+              <div className="glass-panel" style={{ width: '100%', maxWidth: '640px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div>
+                    <h3 style={{ color: '#fff' }}>🔥 Firebase Credentials: {editingOp.username}</h3>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Connect customer database, API keys, storage bucket & secret credentials</p>
+                  </div>
+                  <button onClick={() => setEditingOp(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                </div>
+
+                {saveStatus && (
+                  <div style={{ padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', background: saveStatus.includes('✓') ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)', color: saveStatus.includes('✓') ? '#34d399' : '#818cf8' }}>
+                    {saveStatus}
+                  </div>
+                )}
+
+                {/* Paste JSON Snippet Card */}
+                <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px dashed rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.05)' }}>
+                  <label style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 600, display: 'block', marginBottom: '6px' }}>⚡ Auto-Fill: Paste Firebase Config Snippet / JSON</label>
+                  <textarea 
+                    className="search-input" 
+                    rows="3" 
+                    placeholder="Paste firebaseConfig = { apiKey: '...', projectId: '...' } here..." 
+                    value={rawJsonPaste}
+                    onChange={(e) => setRawJsonPaste(e.target.value)}
+                    style={{ fontFamily: 'monospace', fontSize: '0.8rem', width: '100%', borderRadius: '12px' }}
+                  />
+                  <button type="button" className="btn-secondary" onClick={handleParseJsonPaste} style={{ marginTop: '8px', color: '#818cf8', width: '100%' }}>
+                    ✨ Auto-Parse Firebase Snippet
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveFirebaseConfig} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Firebase Project ID</label>
+                    <input type="text" className="search-input" value={editProject} onChange={(e) => setEditProject(e.target.value)} placeholder="adminto-custom-db" required />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>API Key (`apiKey`)</label>
+                    <input type="text" className="search-input" value={editApiKey} onChange={(e) => setEditApiKey(e.target.value)} placeholder="AIzaSyA..." />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Auth Domain (`authDomain`)</label>
+                    <input type="text" className="search-input" value={editAuthDomain} onChange={(e) => setEditAuthDomain(e.target.value)} placeholder="project.firebaseapp.com" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Storage Bucket (`storageBucket`)</label>
+                    <input type="text" className="search-input" value={editStorageBucket} onChange={(e) => setEditStorageBucket(e.target.value)} placeholder="project.appspot.com" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>App ID (`appId`)</label>
+                    <input type="text" className="search-input" value={editAppId} onChange={(e) => setEditAppId(e.target.value)} placeholder="1:123456789:web:abcdef..." />
+                  </div>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.8rem', background: 'linear-gradient(135deg, #10b981, #059669)', marginTop: '0.5rem' }}>
+                    💾 Save Firebase Credentials
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       );
     }

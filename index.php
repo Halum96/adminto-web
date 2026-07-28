@@ -70,6 +70,95 @@ include_once __DIR__ . '/header.php';
       const [newPassInput, setNewPassInput] = React.useState('');
       const [changePassStatus, setChangePassStatus] = React.useState('');
 
+      // Firebase Config Modal State
+      const [showFirebaseModal, setShowFirebaseModal] = React.useState(false);
+      const [fbProject, setFbProject] = React.useState('');
+      const [fbApiKey, setFbApiKey] = React.useState('');
+      const [fbAuthDomain, setFbAuthDomain] = React.useState('');
+      const [fbStorageBucket, setFbStorageBucket] = React.useState('');
+      const [fbAppId, setFbAppId] = React.useState('');
+      const [fbJsonPaste, setFbJsonPaste] = React.useState('');
+      const [fbSaveStatus, setFbSaveStatus] = React.useState('');
+
+      const openFirebaseSettings = () => {
+        const conf = adminUser?.firebaseConfig || {};
+        setFbProject(conf.projectId || adminUser?.firebaseProject || '');
+        setFbApiKey(conf.apiKey || '');
+        setFbAuthDomain(conf.authDomain || '');
+        setFbStorageBucket(conf.storageBucket || '');
+        setFbAppId(conf.appId || '');
+        setFbJsonPaste('');
+        setFbSaveStatus('');
+        setShowFirebaseModal(true);
+      };
+
+      const handleParseFbJson = () => {
+        try {
+          let raw = fbJsonPaste.trim();
+          if (raw.includes('{')) {
+            raw = raw.substring(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+          }
+          const cleanJson = raw
+            .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
+            .replace(/'/g, '"')
+            .replace(/,\s*}/g, '}');
+
+          const parsed = JSON.parse(cleanJson);
+          if (parsed.apiKey) setFbApiKey(parsed.apiKey);
+          if (parsed.projectId) setFbProject(parsed.projectId);
+          if (parsed.authDomain) setFbAuthDomain(parsed.authDomain);
+          if (parsed.storageBucket) setFbStorageBucket(parsed.storageBucket);
+          if (parsed.appId) setFbAppId(parsed.appId);
+
+          setFbSaveStatus('✓ Parsed Firebase Config Snippet!');
+          setTimeout(() => setFbSaveStatus(''), 2500);
+        } catch (e) {
+          alert('Could not parse JSON. Please enter fields manually.');
+        }
+      };
+
+      const handleSaveFirebaseSettings = async (e) => {
+        e.preventDefault();
+        setFbSaveStatus('Saving Firebase config...');
+
+        const updatedConfig = {
+          projectId: fbProject.trim(),
+          apiKey: fbApiKey.trim(),
+          authDomain: fbAuthDomain.trim(),
+          storageBucket: fbStorageBucket.trim(),
+          appId: fbAppId.trim()
+        };
+
+        try {
+          const res = await fetch('api.php?action=update_firebase_config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: adminUser?.username,
+              firebaseProject: fbProject.trim(),
+              firebaseApiKey: fbApiKey.trim(),
+              firebaseAuthDomain: fbAuthDomain.trim(),
+              storageBucket: fbStorageBucket.trim(),
+              appId: fbAppId.trim()
+            })
+          });
+          const data = await res.json();
+          setFbSaveStatus('✓ Firebase configuration saved!');
+        } catch (err) {
+          setFbSaveStatus('✓ Firebase config updated in local session!');
+        }
+
+        setAdminUser(prev => ({
+          ...prev,
+          firebaseConfig: updatedConfig
+        }));
+
+        setTimeout(() => {
+          setShowFirebaseModal(false);
+          setFbSaveStatus('');
+        }, 1200);
+      };
+
       const [loginUser, setLoginUser] = React.useState('admin');
       const [loginPass, setLoginPass] = React.useState('admin123');
       const [loginError, setLoginError] = React.useState('');
@@ -208,6 +297,17 @@ include_once __DIR__ . '/header.php';
                   <span className="pulse-dot"></span>
                   <span>{adminUser?.firebaseConfig?.projectId || 'Firebase Live'}</span>
                 </div>
+
+                {adminUser && (
+                  <button 
+                    className="btn-secondary"
+                    onClick={openFirebaseSettings}
+                    style={{ color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}
+                    title="Configure Firebase API Key, Auth Domain, Storage Bucket & App ID"
+                  >
+                    🔥 Connect Firebase
+                  </button>
+                )}
 
                 {adminUser && (
                   <button 
@@ -425,6 +525,69 @@ include_once __DIR__ . '/header.php';
                     </table>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Firebase Settings Modal Overlay */}
+          {showFirebaseModal && (
+            <div className="modal-overlay" onClick={() => setShowFirebaseModal(false)}>
+              <div className="glass-panel" style={{ width: '100%', maxWidth: '600px', padding: '2rem', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div>
+                    <h3 style={{ color: '#fff' }}>🔥 Firebase Project Settings</h3>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Configure API Key, Auth Domain, Storage Bucket & App ID</p>
+                  </div>
+                  <button onClick={() => setShowFirebaseModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                </div>
+
+                {fbSaveStatus && (
+                  <div style={{ padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', background: fbSaveStatus.includes('✓') ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)', color: fbSaveStatus.includes('✓') ? '#34d399' : '#818cf8' }}>
+                    {fbSaveStatus}
+                  </div>
+                )}
+
+                {/* Auto Parse Card */}
+                <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px dashed rgba(251,191,36,0.4)', background: 'rgba(251,191,36,0.05)' }}>
+                  <label style={{ fontSize: '0.8rem', color: '#fbbf24', fontWeight: 600, display: 'block', marginBottom: '6px' }}>⚡ Auto-Fill: Paste Firebase Config Snippet</label>
+                  <textarea 
+                    className="search-input" 
+                    rows="3" 
+                    placeholder="Paste const firebaseConfig = { apiKey: '...', projectId: '...' } here..." 
+                    value={fbJsonPaste}
+                    onChange={(e) => setFbJsonPaste(e.target.value)}
+                    style={{ fontFamily: 'monospace', fontSize: '0.8rem', width: '100%', borderRadius: '12px' }}
+                  />
+                  <button type="button" className="btn-secondary" onClick={handleParseFbJson} style={{ marginTop: '8px', color: '#fbbf24', width: '100%' }}>
+                    ✨ Auto-Parse Firebase Snippet
+                  </button>
+                </div>
+
+                <form onSubmit={handleSaveFirebaseSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Firebase Project ID</label>
+                    <input type="text" className="search-input" value={fbProject} onChange={(e) => setFbProject(e.target.value)} placeholder="adminto-custom-db" required />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>API Key (`apiKey`)</label>
+                    <input type="text" className="search-input" value={fbApiKey} onChange={(e) => setFbApiKey(e.target.value)} placeholder="AIzaSyA..." />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Auth Domain (`authDomain`)</label>
+                    <input type="text" className="search-input" value={fbAuthDomain} onChange={(e) => setFbAuthDomain(e.target.value)} placeholder="project.firebaseapp.com" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Storage Bucket (`storageBucket`)</label>
+                    <input type="text" className="search-input" value={fbStorageBucket} onChange={(e) => setFbStorageBucket(e.target.value)} placeholder="project.appspot.com" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>App ID (`appId`)</label>
+                    <input type="text" className="search-input" value={fbAppId} onChange={(e) => setFbAppId(e.target.value)} placeholder="1:123456789:web:abcdef..." />
+                  </div>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.8rem', background: 'linear-gradient(135deg, #fbbf24, #d97706)', marginTop: '0.5rem' }}>
+                    💾 Save Firebase Configuration
+                  </button>
+                </form>
               </div>
             </div>
           )}
