@@ -113,6 +113,25 @@ switch ($action) {
         }
         break;
 
+    // 5. CHANGE OPERATOR PASSWORD
+    case 'change_password':
+        $username = trim($input['username'] ?? '');
+        $newPassword = trim($input['newPassword'] ?? '');
+
+        if (empty($username) || empty($newPassword)) {
+            echo json_encode(['success' => false, 'error' => 'Username and new password required']);
+            exit;
+        }
+
+        try {
+            $stmt = $pdo->prepare("UPDATE operators SET password_hash = :p WHERE LOWER(username) = LOWER(:u)");
+            $stmt->execute(['p' => $newPassword, 'u' => $username]);
+            echo json_encode(['success' => true, 'message' => 'Password updated successfully']);
+        } catch (PDOException $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        break;
+
     default:
         echo json_encode(['success' => false, 'error' => 'Invalid action']);
         break;

