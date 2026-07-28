@@ -283,10 +283,10 @@ session_start();
           <header className="app-header">
             <div className="navbar-content">
               <div className="brand-logo">
-                <div className="brand-icon">🐘</div>
+                <div className="brand-icon">🛡️</div>
                 <div>
-                  <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>ADMINTO (PHP)</h3>
-                  <div style={{ fontSize: '0.7rem', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '1px' }}>MySQL Powered Dashboard</div>
+                  <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>ADMINTO</h3>
+                  <div style={{ fontSize: '0.7rem', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '1px' }}>Realtime Monitoring Console</div>
                 </div>
               </div>
 
@@ -320,7 +320,7 @@ session_start();
                       className="btn-secondary" 
                       style={{ color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }}
                     >
-                      ⚙️ Operator Console (PHP)
+                      ⚙️ Operator Console
                     </button>
                   </a>
                 )}
@@ -461,8 +461,8 @@ session_start();
               <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '2.5rem 2rem' }}>
                 <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                   <div className="brand-icon" style={{ margin: '0 auto 1rem', width: '56px', height: '56px', borderRadius: '16px' }}>🛡️</div>
-                  <h2 style={{ fontSize: '1.6rem', color: '#fff', marginBottom: '4px' }}>Adminto PHP Portal</h2>
-                  <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>MySQL Database Authenticated SaaS</p>
+                  <h2 style={{ fontSize: '1.6rem', color: '#fff', marginBottom: '4px' }}>Adminto Portal</h2>
+                  <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Dedicated Admin Database Authentication</p>
                 </div>
 
                 {loginError && (
@@ -497,7 +497,7 @@ session_start();
                   </div>
 
                   <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
-                    Sign In (MySQL PHP)
+                    Sign In
                   </button>
                 </form>
 

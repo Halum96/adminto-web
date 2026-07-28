@@ -200,7 +200,7 @@ session_start();
                 <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', display: 'flex', alignItems: 'center', justify: 'center', fontSize: '1.2rem' }}>👑</div>
                 <div>
                   <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>Super Admin Operator Console</h3>
-                  <p style={{ fontSize: '0.75rem', color: '#ec4899' }}>MySQL Database Multi-Tenant Licensing Center (PHP)</p>
+                  <p style={{ fontSize: '0.75rem', color: '#ec4899' }}>Multi-Tenant Licensing Center</p>
                 </div>
               </div>
 
