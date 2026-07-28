@@ -6,7 +6,7 @@
 $host = getenv('DB_HOST') ?: 'localhost';
 $dbname = getenv('DB_NAME') ?: 'adminto_saas_db';
 $user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASSWORD') ?: '';
+$pass = getenv('DB_PASSWORD') ?: 'admin123';
 $port = getenv('DB_PORT') ?: '3306';
 
 header('Content-Type: application/json; charset=utf-8');
