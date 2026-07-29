@@ -10,6 +10,7 @@ include_once __DIR__ . '/header.php';
       const [operators, setOperators] = React.useState([]);
       const [loading, setLoading] = React.useState(true);
       const [error, setError] = React.useState('');
+      const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
       // Form fields for adding new operator
       const [username, setUsername] = React.useState('');
@@ -212,20 +213,33 @@ include_once __DIR__ . '/header.php';
         <div>
           <header className="app-header">
             <div className="navbar-content">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', display: 'flex', alignItems: 'center', justify: 'center', fontSize: '1.2rem' }}>👑</div>
-                <div>
-                  <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>Super Admin Operator Console</h3>
-                  <p style={{ fontSize: '0.75rem', color: '#ec4899' }}>Multi-Tenant Firebase & MySQL Licensing Center</p>
+              <div className="navbar-header-top">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', display: 'flex', alignItems: 'center', justify: 'center', fontSize: '1.2rem' }}>👑</div>
+                  <div>
+                    <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>Super Admin Operator Console</h3>
+                    <p style={{ fontSize: '0.75rem', color: '#ec4899' }}>Multi-Tenant Firebase & MySQL Licensing Center</p>
+                  </div>
                 </div>
+
+                <button 
+                  className={`triple-dash-btn ${mobileMenuOpen ? 'active' : ''}`}
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  aria-label="Toggle Navigation Menu"
+                  title="Menu"
+                >
+                  <span className="dash-line"></span>
+                  <span className="dash-line"></span>
+                  <span className="dash-line"></span>
+                </button>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <a href="index.php?role=superadmin" style={{ textDecoration: 'none' }}>
-                  <button className="btn-secondary">📱 Device Monitoring Dashboard</button>
+              <div className={`navbar-actions ${mobileMenuOpen ? 'mobile-expanded' : ''}`}>
+                <a href="index.php?role=superadmin" style={{ textDecoration: 'none', width: '100%' }}>
+                  <button className="btn-secondary nav-action-btn" style={{ width: '100%' }}>📱 Device Monitoring Dashboard</button>
                 </a>
-                <a href="index.php" style={{ textDecoration: 'none' }}>
-                  <button className="btn-secondary" style={{ color: '#f87171' }}>🚪 Sign Out</button>
+                <a href="index.php" style={{ textDecoration: 'none', width: '100%' }}>
+                  <button className="btn-secondary nav-action-btn" style={{ color: '#f87171', width: '100%' }}>🚪 Sign Out</button>
                 </a>
               </div>
             </div>

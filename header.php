@@ -67,7 +67,10 @@
     .navbar-content {
       max-width: 1400px; margin: 0 auto;
       display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-      flex-wrap: wrap;
+    }
+
+    .navbar-header-top {
+      display: flex; align-items: center; justify-content: space-between; width: 100%;
     }
 
     .brand-logo { display: flex; align-items: center; gap: 10px; }
@@ -77,13 +80,60 @@
       display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem;
     }
 
+    .search-container { flex: 1; max-width: 450px; width: 100%; }
+
     .search-input {
-      width: 100%; max-width: 450px;
+      width: 100%;
       padding: 0.75rem 1.2rem;
       background: rgba(17, 24, 39, 0.7);
       border: 1px solid var(--border-color);
       border-radius: 24px; color: #fff; font-size: 0.9rem;
       min-height: 44px; /* Touch-friendly tap target */
+    }
+
+    .navbar-actions {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+
+    .nav-user-group {
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+
+    /* Triple Dash Hamburger Toggle Button */
+    .triple-dash-btn {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 42px;
+      height: 42px;
+      padding: 10px 9px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      backdrop-filter: blur(10px);
+    }
+    .triple-dash-btn:active, .triple-dash-btn:hover {
+      background: rgba(99, 102, 241, 0.25);
+      border-color: rgba(99, 102, 241, 0.5);
+    }
+    .triple-dash-btn .dash-line {
+      display: block; width: 100%; height: 2.5px;
+      background-color: #fff; border-radius: 4px;
+      transition: all 0.3s ease; transform-origin: center;
+    }
+    /* Active triple dash morphing into X cross */
+    .triple-dash-btn.active .dash-line:nth-child(1) {
+      transform: translateY(7px) rotate(45deg);
+      background-color: var(--accent);
+    }
+    .triple-dash-btn.active .dash-line:nth-child(2) {
+      opacity: 0; transform: scaleX(0);
+    }
+    .triple-dash-btn.active .dash-line:nth-child(3) {
+      transform: translateY(-7px) rotate(-45deg);
+      background-color: var(--accent);
     }
 
     .pulse-badge {
@@ -167,11 +217,54 @@
       min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
     }
 
-    /* Mobile Responsive Utilities */
-    @media (max-width: 640px) {
-      .navbar-content { flex-direction: column; align-items: stretch; gap: 0.85rem; }
+    /* Mobile Responsive Utilities (Phone Optimization) */
+    @media (max-width: 768px) {
+      .navbar-content { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+      .triple-dash-btn { display: flex; }
+      .search-container { max-width: 100%; }
       .search-input { max-width: 100%; }
-      .navbar-actions { justify-content: space-between; overflow-x: auto; padding-bottom: 4px; }
+      
+      .navbar-actions {
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        padding: 1.1rem;
+        margin-top: 0.25rem;
+        background: rgba(13, 18, 30, 0.96);
+        border: 1px solid rgba(99, 102, 241, 0.35);
+        border-radius: 16px;
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.75);
+        gap: 0.85rem;
+        animation: tripleDashMenuSlide 0.25s ease-out forwards;
+      }
+      .navbar-actions.mobile-expanded {
+        display: flex !important;
+      }
+      .nav-user-group {
+        flex-direction: column;
+        width: 100%;
+        gap: 0.85rem;
+      }
+      .nav-action-btn, .pulse-badge {
+        width: 100%;
+        justify-content: center;
+        min-height: 46px;
+        font-size: 0.9rem;
+      }
+    }
+
+    @keyframes tripleDashMenuSlide {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
   </style>
 </head>

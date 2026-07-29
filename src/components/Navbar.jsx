@@ -11,22 +11,36 @@ export default function Navbar({
   onOpenSuperAdmin,
   onOpenDownloadApk
 }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const isSuperAdmin = adminUser?.role === 'superadmin';
 
   return (
     <header className="app-header">
       <div className="navbar-content">
-        <div className="brand-logo">
-          <div className="brand-icon">
-            <Shield size={24} />
+        <div className="navbar-header-top">
+          <div className="brand-logo">
+            <div className="brand-icon">
+              <Shield size={24} />
+            </div>
+            <div>
+              <div className="brand-title">ADMINTO</div>
+              <div className="brand-subtitle">Realtime Monitoring Console</div>
+            </div>
           </div>
-          <div>
-            <div className="brand-title">ADMINTO</div>
-            <div className="brand-subtitle">Realtime Monitoring Console</div>
-          </div>
+
+          <button 
+            className={`triple-dash-btn ${mobileMenuOpen ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle Navigation Menu"
+            title="Menu"
+          >
+            <span className="dash-line"></span>
+            <span className="dash-line"></span>
+            <span className="dash-line"></span>
+          </button>
         </div>
 
-        <div className="search-box">
+        <div className="search-box search-container">
           <Search size={18} className="search-icon" />
           <input
             type="text"
@@ -37,16 +51,16 @@ export default function Navbar({
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div className="pulse-badge active" style={{ cursor: 'pointer' }} onClick={onRefresh}>
+        <div className={`navbar-actions ${mobileMenuOpen ? 'mobile-expanded' : ''}`}>
+          <div className="pulse-badge active nav-action-btn" style={{ cursor: 'pointer' }} onClick={() => { onRefresh(); setMobileMenuOpen(false); }}>
             <span className="pulse-dot"></span>
             <Wifi size={12} />
             <span>{isRefreshing ? 'Syncing...' : (adminUser?.firebaseConfig?.projectId || 'Firebase Live')}</span>
           </div>
 
           <button 
-            className="btn-secondary" 
-            onClick={onRefresh}
+            className="btn-secondary nav-action-btn" 
+            onClick={() => { onRefresh(); setMobileMenuOpen(false); }}
             title="Refresh Data (Auto-refreshes every 15s)"
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
@@ -56,8 +70,8 @@ export default function Navbar({
 
           {adminUser && (
             <button 
-              className="btn-secondary"
-              onClick={onOpenDownloadApk}
+              className="btn-secondary nav-action-btn"
+              onClick={() => { onOpenDownloadApk(); setMobileMenuOpen(false); }}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}
               title="Download Operator-Tailored Custom Android APK"
             >
@@ -67,8 +81,8 @@ export default function Navbar({
 
           {isSuperAdmin && (
             <button 
-              className="btn-secondary"
-              onClick={onOpenSuperAdmin}
+              className="btn-secondary nav-action-btn"
+              onClick={() => { onOpenSuperAdmin(); setMobileMenuOpen(false); }}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }}
               title="Super Admin Operator Console"
             >
@@ -78,8 +92,8 @@ export default function Navbar({
 
           {adminUser && (
             <button 
-              className="btn-secondary"
-              onClick={onLogout}
+              className="btn-secondary nav-action-btn"
+              onClick={() => { onLogout(); setMobileMenuOpen(false); }}
               style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f87171' }}
             >
               <LogOut size={14} />
