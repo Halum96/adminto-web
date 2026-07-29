@@ -298,7 +298,7 @@ include_once __DIR__ . '/header.php';
                   <span>{adminUser?.firebaseConfig?.projectId || 'Firebase Live'}</span>
                 </div>
 
-                {adminUser && (
+                {isSuperAdmin && (
                   <button 
                     className="btn-secondary"
                     onClick={openFirebaseSettings}
@@ -709,6 +709,34 @@ include_once __DIR__ . '/header.php';
                     Sign In
                   </button>
                 </form>
+
+                <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <a 
+                    href="https://t.me/tejashal" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <button 
+                      type="button" 
+                      className="btn-secondary" 
+                      style={{ 
+                        width: '100%', 
+                        padding: '0.75rem', 
+                        color: '#38bdf8', 
+                        border: '1px solid rgba(56, 189, 248, 0.4)', 
+                        background: 'rgba(56, 189, 248, 0.08)',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                      }}
+                    >
+                      ✈️ Buy License / Contact @tejashal
+                    </button>
+                  </a>
+                </div>
 
                 <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center' }}>
                   <div>Try active operator: <code style={{ color: '#93c5fd' }}>operator1 / operator123</code></div>
