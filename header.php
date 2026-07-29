@@ -217,12 +217,102 @@
       min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
     }
 
+    /* Filter dropdown controls */
+    .filter-select {
+      padding: 0.6rem 1rem;
+      border-radius: 12px;
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+      min-height: 40px;
+    }
+    .filter-select:focus {
+      border-color: var(--primary);
+    }
+
+    /* Device Action Controls */
+    .device-control-btn {
+      padding: 0.4rem 0.7rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s ease;
+    }
+    .device-control-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Mobile Floating Action Button (FAB) */
+    .mobile-fab {
+      display: none;
+      position: fixed;
+      bottom: 76px;
+      right: 20px;
+      z-index: 200;
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.5);
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    /* Mobile Fixed Bottom Navigation Bar */
+    .mobile-bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 150;
+      background: rgba(9, 13, 22, 0.96);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-top: 1px solid var(--border-color);
+      padding: 6px 12px 10px;
+      justify-content: space-around;
+      align-items: center;
+    }
+    .mobile-nav-item {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 10px;
+    }
+    .mobile-nav-item.active {
+      color: #fff;
+    }
+
     /* Mobile Responsive Utilities (Phone Optimization) */
     @media (max-width: 768px) {
       .navbar-content { flex-direction: column; align-items: stretch; gap: 0.75rem; }
       .triple-dash-btn { display: flex; }
       .search-container { max-width: 100%; }
       .search-input { max-width: 100%; }
+      .mobile-fab { display: flex; }
+      .mobile-bottom-nav { display: flex; }
       
       .navbar-actions {
         display: none;

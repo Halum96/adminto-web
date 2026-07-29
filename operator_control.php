@@ -207,6 +207,12 @@ include_once __DIR__ . '/header.php';
         }
       };
 
+      const handleCopyLoginUrl = (op) => {
+        const loginUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname.replace('operator_control.php', 'index.php')}?user=${encodeURIComponent(op.username)}`;
+        navigator.clipboard.writeText(loginUrl);
+        alert(`✓ Direct One-Click Login Link copied for ${op.username}!\n${loginUrl}`);
+      };
+
       const todayStr = new Date().toISOString().split('T')[0];
 
       return (
@@ -337,7 +343,10 @@ include_once __DIR__ . '/header.php';
                           </span>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: '8px' }}>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <button className="btn-secondary" onClick={() => handleCopyLoginUrl(op)} style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="Copy One-Click Login URL">
+                              🔗 Login Link
+                            </button>
                             <button className="btn-secondary" onClick={() => openFirebaseModal(op)} style={{ color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }} title="Configure Firebase Credentials">
                               🔥 Firebase Config
                             </button>
