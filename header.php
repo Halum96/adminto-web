@@ -251,6 +251,28 @@
       transform: scale(0.96);
     }
 
+    /* SIM Selection & Forward Pills */
+    .sim-select-pill {
+      padding: 0.5rem 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: rgba(17, 24, 39, 0.6);
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sim-select-pill.active {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+
     /* Mobile Floating Action Button (FAB) */
     .mobile-fab {
       display: none;

