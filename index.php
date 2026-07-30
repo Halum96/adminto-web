@@ -994,43 +994,49 @@ include_once __DIR__ . '/header.php';
                     </div>
                   )}
                   {tab === 'forward' && (
-                    <div style={{ overflowX: 'auto', width: '100%' }}>
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th>Task ID</th>
-                            <th>Type</th>
-                            <th>Selected SIM</th>
-                            <th>Destination Number</th>
-                            <th>Timestamp</th>
-                            <th>Delivery Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {forwardTasks.filter(t => t.userId === selectedUser.userId).map((task) => (
-                            <tr key={task.id}>
-                              <td style={{ whiteSpace: 'nowrap' }}><code style={{ color: '#818cf8' }}>{task.id}</code></td>
-                              <td style={{ whiteSpace: 'nowrap' }}><strong style={{ color: task.dataType === 'SMS' ? '#ec4899' : '#38bdf8' }}>{task.dataType}</strong></td>
-                              <td style={{ whiteSpace: 'nowrap' }}><span style={{ color: '#fbbf24', fontWeight: 600 }}>{task.selectedSim}</span></td>
-                              <td style={{ whiteSpace: 'nowrap' }}><strong>{task.phoneNumber}</strong></td>
-                              <td style={{ color: '#9ca3af', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{task.timestamp}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}>
-                                <span className={`pulse-badge ${task.status === 'sent' ? 'active' : task.status === 'pending' ? 'pending' : 'expired'}`}>
-                                  <span className="pulse-dot"></span>
-                                  {task.status.toUpperCase()}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                          {forwardTasks.filter(t => t.userId === selectedUser.userId).length === 0 && (
-                            <tr>
-                              <td colSpan="6" style={{ textAlign: 'center', color: '#9ca3af', padding: '1.5rem' }}>
-                                No active remote forward tasks for this device.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      {forwardTasks.filter(t => t.userId === selectedUser.userId).map((task) => (
+                        <div key={task.id} className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(236,72,153,0.35)', background: 'rgba(236,72,153,0.05)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '6px' }}>
+                            <h4 style={{ color: '#ec4899', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>📲 Forward Task: {task.dataType}</span>
+                              <code style={{ fontSize: '0.78rem', color: '#818cf8' }}>{task.id}</code>
+                            </h4>
+                            <span className={`pulse-badge ${task.status === 'sent' ? 'active' : task.status === 'pending' ? 'pending' : 'expired'}`}>
+                              <span className="pulse-dot"></span>
+                              {task.status.toUpperCase()}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.85rem' }}>
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>SELECTED SIM</div>
+                              <div style={{ fontSize: '0.95rem', color: '#fbbf24', fontWeight: 700, marginTop: '4px' }}>
+                                {task.selectedSim}
+                              </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(56,189,248,0.3)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>DESTINATION NUMBER</div>
+                              <div style={{ fontSize: '0.95rem', color: '#fff', fontWeight: 700, marginTop: '4px' }}>
+                                {task.phoneNumber}
+                              </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>TIMESTAMP</div>
+                              <div style={{ fontSize: '0.85rem', color: '#9ca3af', fontWeight: 600, marginTop: '4px' }}>
+                                {task.timestamp}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {forwardTasks.filter(t => t.userId === selectedUser.userId).length === 0 && (
+                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
+                          No active remote forward tasks for this device.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
