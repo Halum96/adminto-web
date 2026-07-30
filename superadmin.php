@@ -419,9 +419,6 @@ include_once __DIR__ . '/header.php';
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            <button className="btn-secondary" onClick={() => handleCopyLoginUrl(op)} style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="Copy One-Click Login URL">
-                              🔗 Login Link
-                            </button>
                             <button className="btn-secondary" onClick={() => openFirebaseModal(op)} style={{ color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }} title="Configure Firebase Credentials">
                               🔥 Firebase Config
                             </button>

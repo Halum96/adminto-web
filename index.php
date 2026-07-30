@@ -77,20 +77,8 @@ include_once __DIR__ . '/header.php';
     ];
 
     function App() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isSuperAdminParam = urlParams.get('role') === 'superadmin';
-      const userParam = urlParams.get('user');
-
-      const matchedUser = React.useMemo(() => {
-        if (userParam) {
-          return INITIAL_OPERATORS.find(op => op.username.toLowerCase() === userParam.toLowerCase()) || {
-            id: `op_${userParam}`, username: userParam, email: `${userParam}@adminto.com`, role: 'operator', firebaseConfig: { projectId: `adminto-${userParam}` }
-          };
-        }
-        return isSuperAdminParam ? INITIAL_OPERATORS[0] : null;
-      }, [userParam, isSuperAdminParam]);
-
-      const [adminUser, setAdminUser] = React.useState(matchedUser);
+      // Require authenticated session (no unauthenticated URL parameter bypass)
+      const [adminUser, setAdminUser] = React.useState(null);
       const [operators, setOperators] = React.useState(INITIAL_OPERATORS);
       const [users, setUsers] = React.useState(MOCK_DATA);
       const [search, setSearch] = React.useState('');
