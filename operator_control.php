@@ -11,6 +11,7 @@ include_once __DIR__ . '/header.php';
       const [loading, setLoading] = React.useState(true);
       const [error, setError] = React.useState('');
       const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+      const [searchQuery, setSearchQuery] = React.useState('');
 
       // Form fields for adding new operator
       const [username, setUsername] = React.useState('');
@@ -385,9 +386,19 @@ include_once __DIR__ . '/header.php';
 
             {/* Operators Table Card */}
             <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
                 <h3 style={{ color: '#fff', fontSize: '1.1rem' }}>📱 Configured Operators & Database Tenants ({operators.length})</h3>
-                <button className="btn-secondary" onClick={fetchOperators}>🔄 Refresh List</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <input 
+                    type="text" 
+                    className="search-input" 
+                    style={{ width: '260px', paddingLeft: '1rem' }} 
+                    placeholder="Search operators by name, project, role..." 
+                    value={searchQuery} 
+                    onChange={(e) => setSearchQuery(e.target.value)} 
+                  />
+                  <button className="btn-secondary" onClick={fetchOperators}>🔄 Refresh List</button>
+                </div>
               </div>
 
               {error && (
@@ -408,7 +419,14 @@ include_once __DIR__ . '/header.php';
                   </tr>
                 </thead>
                 <tbody>
-                  {operators.map(op => {
+                  {operators.filter(op => {
+                    if (!searchQuery.trim()) return true;
+                    const q = searchQuery.toLowerCase();
+                    return (op.username || '').toLowerCase().includes(q) ||
+                           (op.fullName || '').toLowerCase().includes(q) ||
+                           (op.firebaseProject || '').toLowerCase().includes(q) ||
+                           (op.role || '').toLowerCase().includes(q);
+                  }).map(op => {
                     const isExpired = op.expiryDate < todayStr;
                     return (
                       <tr key={op.id}>
