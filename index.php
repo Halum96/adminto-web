@@ -695,6 +695,7 @@ include_once __DIR__ . '/header.php';
                     </button>
                   </div>
                 </div>
+              ))}
               {filtered.length === 0 && (
                 <div className="glass-panel" style={{ padding: '3.5rem 2rem', textAlign: 'center', margin: '1.5rem 0', border: '1px dashed rgba(99,102,241,0.35)', background: 'rgba(99,102,241,0.04)', borderRadius: '16px' }}>
                   <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📡</div>
