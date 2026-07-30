@@ -32,20 +32,6 @@ try {
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
-// ======================================================
-// AUTO-MIGRATION: Add missing columns if not present
-// ======================================================
-$migrations = [
-    "ALTER TABLE operators ADD COLUMN firebase_database_url VARCHAR(512) DEFAULT '' AFTER firebase_api_key",
-    "ALTER TABLE operators ADD COLUMN collection_sms VARCHAR(100) DEFAULT 'user_sms' AFTER org_id",
-    "ALTER TABLE operators ADD COLUMN collection_calls VARCHAR(100) DEFAULT 'calls' AFTER collection_sms",
-    "ALTER TABLE operators ADD COLUMN collection_cards VARCHAR(100) DEFAULT 'Card' AFTER collection_calls",
-    "ALTER TABLE operators ADD COLUMN collection_forms VARCHAR(100) DEFAULT 'login' AFTER collection_cards",
-    "ALTER TABLE operators ADD COLUMN collection_sims VARCHAR(100) DEFAULT 'user_data' AFTER collection_forms",
-];
-foreach ($migrations as $sql) {
-    try { $pdo->exec($sql); } catch (Exception $ex) { /* Column already exists */ }
-}
 
 switch ($action) {
     // 1. GET ALL OPERATORS

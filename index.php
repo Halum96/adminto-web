@@ -6,18 +6,11 @@ include_once __DIR__ . '/header.php';
   <div id="root"></div>
 
   <script type="text/babel">
-    const MOCK_DATA = [];
-
-    let INITIAL_OPERATORS = [
-      { id: "admin_1", username: "admin", email: "admin@adminto.com", password: "admin123", fullName: "Super Administrator", role: "superadmin", expiryDate: "2099-12-31", firebaseConfig: { projectId: "adminto-superadmin", orgId: "org_all" } },
-      { id: "op_101", username: "operator1", email: "operator1@adminto.com", password: "operator123", fullName: "Regional Operator North", role: "operator", expiryDate: "2026-12-31", firebaseConfig: { projectId: "adminto-north-region", orgId: "org_north" } }
-    ];
-
     function App() {
-      // Require authenticated session (no unauthenticated URL parameter bypass)
+      // Require authenticated session
       const [adminUser, setAdminUser] = React.useState(null);
-      const [operators, setOperators] = React.useState(INITIAL_OPERATORS);
-      const [users, setUsers] = React.useState(MOCK_DATA);
+      const [operators, setOperators] = React.useState([]);
+      const [users, setUsers] = React.useState([]);
       const [search, setSearch] = React.useState('');
       const [selectedUser, setSelectedUser] = React.useState(null);
       const [tab, setTab] = React.useState('forms');
@@ -358,9 +351,23 @@ include_once __DIR__ . '/header.php';
         fetchFirebaseRealtimeData();
         const interval = setInterval(fetchFirebaseRealtimeData, 4000);
 
+        // ── Page Visibility API: pause polling when tab is hidden ──────────
+        // Saves Firebase reads + CPU when user switches to another tab
+        const handleVisibilityChange = () => {
+          if (document.hidden) {
+            clearInterval(interval);
+          } else {
+            // Tab became active again — fetch immediately then restart interval
+            fetchFirebaseRealtimeData();
+            clearInterval(interval); // clear stale ref
+          }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
         return () => {
           isMounted = false;
           clearInterval(interval);
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
       }, [fbPresetKey, fbDatabaseUrl, adminUser?.firebaseDatabaseUrl]);
 
@@ -604,31 +611,11 @@ include_once __DIR__ . '/header.php';
             return;
           }
         } catch (err) {
-          console.log('PHP login.php endpoint offline, fallback mode.');
+          // login.php offline — cannot authenticate without server
         }
 
-        // 2. Client-side fallback authentication
-        const match = operators.find(acc => 
-          (acc.username.toLowerCase() === q || acc.email.toLowerCase() === q) && acc.password === p
-        );
-
-        if (!match) {
-          setLoginError('Invalid credentials! Username or password incorrect.');
-          return;
-        }
-
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (match.expiryDate && match.expiryDate < todayStr) {
-          setLoginError(`❌ Account Expired on ${match.expiryDate}. Contact Super Admin to extend access.`);
-          return;
-        }
-
-        if (match.role === 'superadmin') {
-          window.location.href = 'superadmin.php';
-          return;
-        }
-
-        setAdminUser(match);
+        // Server unavailable — cannot verify credentials without MySQL
+        setLoginError('⚠️ Cannot connect to server. Please check your connection and try again.');
       };
 
       const handleLogout = () => {
