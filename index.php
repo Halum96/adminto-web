@@ -371,8 +371,8 @@ include_once __DIR__ . '/header.php';
         }, 1200);
       };
 
-      const [loginUser, setLoginUser] = React.useState('admin');
-      const [loginPass, setLoginPass] = React.useState('admin123');
+      const [loginUser, setLoginUser] = React.useState('');
+      const [loginPass, setLoginPass] = React.useState('');
       const [loginError, setLoginError] = React.useState('');
 
       const handleChangePasswordSubmit = async (e) => {
@@ -476,12 +476,21 @@ include_once __DIR__ . '/header.php';
       };
 
       const filtered = users.filter(u => {
-        const matchesSearch = u.fullName.toLowerCase().includes(search.toLowerCase()) || 
-          u.mobileNumber.includes(search) ||
-          u.userId.toLowerCase().includes(search.toLowerCase());
+        const q = search.trim().toLowerCase();
         
         const matchesStatus = statusFilter === 'all' ? true : 
           statusFilter === 'active' ? u.isActive : !u.isActive;
+
+        if (!q) return matchesStatus;
+
+        const name = (u.fullName || '').toLowerCase();
+        const mob = (u.mobileNumber || '').toLowerCase();
+        const sim1 = (u.sim1Data?.phone || '').toLowerCase();
+        const sim2 = (u.sim2Data?.phone || '').toLowerCase();
+        const uid = (u.userId || '').toLowerCase();
+        const device = (u.stringField || '').toLowerCase();
+
+        const matchesSearch = name.includes(q) || mob.includes(q) || sim1.includes(q) || sim2.includes(q) || uid.includes(q) || device.includes(q);
 
         return matchesSearch && matchesStatus;
       });
