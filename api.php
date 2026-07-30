@@ -36,6 +36,13 @@ switch ($action) {
     // 1. GET ALL OPERATORS
     case 'get_operators':
         try {
+            // Auto-migrate: add firebase_database_url column if not present in MySQL table
+            try {
+                $pdo->exec("ALTER TABLE operators ADD COLUMN firebase_database_url VARCHAR(255) NULL AFTER firebase_api_key");
+            } catch (Exception $ex) {
+                // Column already exists or table cannot be altered
+            }
+
             $stmt = $pdo->query("SELECT id, username, email, full_name as fullName, role, expiry_date as expiryDate, is_active as isActive, firebase_project_id as firebaseProject, firebase_api_key as firebaseApiKey, firebase_database_url as firebaseDatabaseUrl, firebase_auth_domain as firebaseAuthDomain, storage_bucket as storageBucket, app_id as appId, org_id as orgId FROM operators ORDER BY created_at DESC");
             $operators = $stmt->fetchAll();
             echo json_encode(['success' => true, 'operators' => $operators]);
