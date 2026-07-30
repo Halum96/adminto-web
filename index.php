@@ -1359,7 +1359,8 @@ include_once __DIR__ . '/header.php';
                       style={{ maxWidth: '100%', paddingLeft: '1rem' }}
                       value={loginUser}
                       onChange={(e) => setLoginUser(e.target.value)}
-                      placeholder="admin"
+                      placeholder="Enter Username or Email"
+                      autoComplete="off"
                     />
                   </div>
 
@@ -1372,6 +1373,7 @@ include_once __DIR__ . '/header.php';
                       value={loginPass}
                       onChange={(e) => setLoginPass(e.target.value)}
                       placeholder="••••••••"
+                      autoComplete="new-password"
                     />
                   </div>
 
@@ -1406,11 +1408,6 @@ include_once __DIR__ . '/header.php';
                       🛒 Buy License
                     </button>
                   </a>
-                </div>
-
-                <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center' }}>
-                  <div>Try active operator: <code style={{ color: '#93c5fd' }}>operator1 / operator123</code></div>
-                  <div style={{ marginTop: '4px' }}>Try Super Admin: <code style={{ color: '#ec4899' }}>admin / admin123</code></div>
                 </div>
               </div>
             </div>
