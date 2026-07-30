@@ -905,9 +905,7 @@ include_once __DIR__ . '/header.php';
                     </div>
                   )}
 
-                  )}
-
-                  {tab === 'formfill' && (
+                  {(tab === 'forms' || tab === 'formfill') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       {(selectedUser.formDataList || []).map((form) => {
                         const smartFields = extractSmartFields(form);
