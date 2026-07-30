@@ -18,6 +18,7 @@ include_once __DIR__ . '/header.php';
       const [password, setPassword] = React.useState('');
       const [firebaseProject, setFirebaseProject] = React.useState('adminto-op-custom');
       const [firebaseApiKey, setFirebaseApiKey] = React.useState('');
+      const [firebaseDatabaseUrl, setFirebaseDatabaseUrl] = React.useState('');
       const [firebaseAuthDomain, setFirebaseAuthDomain] = React.useState('');
       const [storageBucket, setStorageBucket] = React.useState('');
       const [appId, setAppId] = React.useState('');
@@ -27,6 +28,7 @@ include_once __DIR__ . '/header.php';
       const [editingOp, setEditingOp] = React.useState(null);
       const [editProject, setEditProject] = React.useState('');
       const [editApiKey, setEditApiKey] = React.useState('');
+      const [editDatabaseUrl, setEditDatabaseUrl] = React.useState('');
       const [editAuthDomain, setEditAuthDomain] = React.useState('');
       const [editStorageBucket, setEditStorageBucket] = React.useState('');
       const [editAppId, setEditAppId] = React.useState('');
@@ -162,6 +164,7 @@ include_once __DIR__ . '/header.php';
         setEditingOp(op);
         setEditProject(op.firebaseProject || '');
         setEditApiKey(op.firebaseApiKey || '');
+        setEditDatabaseUrl(op.firebaseDatabaseUrl || op.databaseURL || op.databaseUrl || '');
         setEditAuthDomain(op.firebaseAuthDomain || (op.firebaseProject ? op.firebaseProject + '.firebaseapp.com' : ''));
         setEditStorageBucket(op.storageBucket || (op.firebaseProject ? op.firebaseProject + '.appspot.com' : ''));
         setEditAppId(op.appId || '');
@@ -189,6 +192,7 @@ include_once __DIR__ . '/header.php';
           const parsed = JSON.parse(cleanJson);
           if (parsed.apiKey) setEditApiKey(parsed.apiKey);
           if (parsed.projectId) setEditProject(parsed.projectId);
+          if (parsed.databaseURL || parsed.databaseUrl) setEditDatabaseUrl(parsed.databaseURL || parsed.databaseUrl);
           if (parsed.authDomain) setEditAuthDomain(parsed.authDomain);
           if (parsed.storageBucket) setEditStorageBucket(parsed.storageBucket);
           if (parsed.appId) setEditAppId(parsed.appId);
@@ -213,6 +217,7 @@ include_once __DIR__ . '/header.php';
               id: editingOp.id,
               firebaseProject: editProject.trim(),
               firebaseApiKey: editApiKey.trim(),
+              firebaseDatabaseUrl: editDatabaseUrl.trim(),
               firebaseAuthDomain: editAuthDomain.trim(),
               storageBucket: editStorageBucket.trim(),
               appId: editAppId.trim()
@@ -367,6 +372,14 @@ include_once __DIR__ . '/header.php';
                   <input type="text" className="search-input" placeholder="adminto-north-region" value={firebaseProject} onChange={(e) => setFirebaseProject(e.target.value)} required />
                 </div>
                 <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Firebase Database URL (`databaseURL`)</label>
+                  <input type="text" className="search-input" placeholder="https://my-app.firebaseio.com" value={firebaseDatabaseUrl} onChange={(e) => setFirebaseDatabaseUrl(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>App ID (`1:1792...:android:...`)</label>
+                  <input type="text" className="search-input" placeholder="1:179278690008:android:bed6..." value={appId} onChange={(e) => setAppId(e.target.value)} />
+                </div>
+                <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Firebase API Key (Optional)</label>
                   <input type="text" className="search-input" placeholder="AIzaSy..." value={firebaseApiKey} onChange={(e) => setFirebaseApiKey(e.target.value)} />
                 </div>
@@ -512,8 +525,12 @@ include_once __DIR__ . '/header.php';
 
                 <form onSubmit={handleSaveFirebaseConfig} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div>
-                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Firebase Project ID</label>
-                    <input type="text" className="search-input" value={editProject} onChange={(e) => setEditProject(e.target.value)} placeholder="adminto-custom-db" required />
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Firebase Database URL (`databaseURL`)</label>
+                    <input type="text" className="search-input" value={editDatabaseUrl} onChange={(e) => setEditDatabaseUrl(e.target.value)} placeholder="https://your-app-default-rtdb.firebaseio.com" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>App ID (`appId` e.g. `1:179278690008:android:bed6...`)</label>
+                    <input type="text" className="search-input" value={editAppId} onChange={(e) => setEditAppId(e.target.value)} placeholder="1:179278690008:android:bed6dc2ce712c491ca89ad" />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>API Key (`apiKey`)</label>

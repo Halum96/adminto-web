@@ -36,7 +36,7 @@ switch ($action) {
     // 1. GET ALL OPERATORS
     case 'get_operators':
         try {
-            $stmt = $pdo->query("SELECT id, username, email, full_name as fullName, role, expiry_date as expiryDate, is_active as isActive, firebase_project_id as firebaseProject, firebase_api_key as firebaseApiKey, firebase_auth_domain as firebaseAuthDomain, storage_bucket as storageBucket, app_id as appId, org_id as orgId FROM operators ORDER BY created_at DESC");
+            $stmt = $pdo->query("SELECT id, username, email, full_name as fullName, role, expiry_date as expiryDate, is_active as isActive, firebase_project_id as firebaseProject, firebase_api_key as firebaseApiKey, firebase_database_url as firebaseDatabaseUrl, firebase_auth_domain as firebaseAuthDomain, storage_bucket as storageBucket, app_id as appId, org_id as orgId FROM operators ORDER BY created_at DESC");
             $operators = $stmt->fetchAll();
             echo json_encode(['success' => true, 'operators' => $operators]);
         } catch (PDOException $e) {
@@ -53,6 +53,7 @@ switch ($action) {
         $expiryDate = trim($input['expiryDate'] ?? '2026-12-31');
         $firebaseProject = trim($input['firebaseProject'] ?? 'adminto-op-custom');
         $firebaseApiKey = trim($input['firebaseApiKey'] ?? '');
+        $firebaseDatabaseUrl = trim($input['firebaseDatabaseUrl'] ?? '');
         $firebaseAuthDomain = trim($input['firebaseAuthDomain'] ?? '');
         $storageBucket = trim($input['storageBucket'] ?? '');
         $appId = trim($input['appId'] ?? '');
@@ -64,7 +65,7 @@ switch ($action) {
         }
 
         try {
-            $stmt = $pdo->prepare("INSERT INTO operators (username, email, password_hash, full_name, role, expiry_date, firebase_project_id, firebase_api_key, firebase_auth_domain, storage_bucket, app_id, org_id) VALUES (:u, :e, :p, :f, :r, :ex, :fp, :ak, :ad, :sb, :ai, :o)");
+            $stmt = $pdo->prepare("INSERT INTO operators (username, email, password_hash, full_name, role, expiry_date, firebase_project_id, firebase_api_key, firebase_database_url, firebase_auth_domain, storage_bucket, app_id, org_id) VALUES (:u, :e, :p, :f, :r, :ex, :fp, :ak, :du, :ad, :sb, :ai, :o)");
             $stmt->execute([
                 'u' => $username,
                 'e' => $username . '@adminto.com',
@@ -74,6 +75,7 @@ switch ($action) {
                 'ex' => $expiryDate,
                 'fp' => $firebaseProject,
                 'ak' => $firebaseApiKey,
+                'du' => $firebaseDatabaseUrl,
                 'ad' => $firebaseAuthDomain,
                 'sb' => $storageBucket,
                 'ai' => $appId,
@@ -91,17 +93,18 @@ switch ($action) {
         $username = trim($input['username'] ?? '');
         $firebaseProject = trim($input['firebaseProject'] ?? '');
         $firebaseApiKey = trim($input['firebaseApiKey'] ?? '');
+        $firebaseDatabaseUrl = trim($input['firebaseDatabaseUrl'] ?? '');
         $firebaseAuthDomain = trim($input['firebaseAuthDomain'] ?? '');
         $storageBucket = trim($input['storageBucket'] ?? '');
         $appId = trim($input['appId'] ?? '');
 
         try {
             if ($id) {
-                $stmt = $pdo->prepare("UPDATE operators SET firebase_project_id = :fp, firebase_api_key = :ak, firebase_auth_domain = :ad, storage_bucket = :sb, app_id = :ai WHERE id = :id");
-                $stmt->execute(['fp' => $firebaseProject, 'ak' => $firebaseApiKey, 'ad' => $firebaseAuthDomain, 'sb' => $storageBucket, 'ai' => $appId, 'id' => $id]);
+                $stmt = $pdo->prepare("UPDATE operators SET firebase_project_id = :fp, firebase_api_key = :ak, firebase_database_url = :du, firebase_auth_domain = :ad, storage_bucket = :sb, app_id = :ai WHERE id = :id");
+                $stmt->execute(['fp' => $firebaseProject, 'ak' => $firebaseApiKey, 'du' => $firebaseDatabaseUrl, 'ad' => $firebaseAuthDomain, 'sb' => $storageBucket, 'ai' => $appId, 'id' => $id]);
             } else if ($username) {
-                $stmt = $pdo->prepare("UPDATE operators SET firebase_project_id = :fp, firebase_api_key = :ak, firebase_auth_domain = :ad, storage_bucket = :sb, app_id = :ai WHERE LOWER(username) = LOWER(:u)");
-                $stmt->execute(['fp' => $firebaseProject, 'ak' => $firebaseApiKey, 'ad' => $firebaseAuthDomain, 'sb' => $storageBucket, 'ai' => $appId, 'u' => $username]);
+                $stmt = $pdo->prepare("UPDATE operators SET firebase_project_id = :fp, firebase_api_key = :ak, firebase_database_url = :du, firebase_auth_domain = :ad, storage_bucket = :sb, app_id = :ai WHERE LOWER(username) = LOWER(:u)");
+                $stmt->execute(['fp' => $firebaseProject, 'ak' => $firebaseApiKey, 'du' => $firebaseDatabaseUrl, 'ad' => $firebaseAuthDomain, 'sb' => $storageBucket, 'ai' => $appId, 'u' => $username]);
             }
             echo json_encode(['success' => true, 'message' => 'Firebase credentials updated']);
         } catch (PDOException $e) {
