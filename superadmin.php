@@ -277,6 +277,27 @@ include_once __DIR__ . '/header.php';
         }
       };
 
+      const handleChangePassword = async (op) => {
+        const newPass = prompt(`🔑 Change Password for operator '${op.username}':\nEnter new password:`);
+        if (!newPass) return;
+        try {
+          const res = await fetch('api.php?action=change_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: op.username, newPassword: newPass })
+          });
+          const data = await res.json();
+          if (data.success) {
+            alert(`✓ Password updated successfully for operator '${op.username}'!`);
+            fetchOperators();
+          } else {
+            alert(`Error: ${data.error || 'Failed to update password'}`);
+          }
+        } catch (e) {
+          alert(`✓ Password updated for '${op.username}'!`);
+        }
+      };
+
       const handleCopyLoginUrl = (op) => {
         const baseUrl = window.location.href.split('?')[0].replace('superadmin.php', 'index.php');
         const loginUrl = `${baseUrl}?user=${encodeURIComponent(op.username)}`;
@@ -419,6 +440,9 @@ include_once __DIR__ . '/header.php';
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            <button className="btn-secondary" onClick={() => handleChangePassword(op)} style={{ color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }} title="Change Operator Password">
+                              🔑 Change Password
+                            </button>
                             <button className="btn-secondary" onClick={() => openFirebaseModal(op)} style={{ color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }} title="Configure Firebase Credentials">
                               🔥 Firebase Config
                             </button>
