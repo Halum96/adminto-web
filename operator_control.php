@@ -27,6 +27,7 @@ include_once __DIR__ . '/header.php';
       const [editingOp, setEditingOp] = React.useState(null);
       const [editProject, setEditProject] = React.useState('');
       const [editApiKey, setEditApiKey] = React.useState('');
+      const [editDatabaseUrl, setEditDatabaseUrl] = React.useState('');
       const [editAuthDomain, setEditAuthDomain] = React.useState('');
       const [editStorageBucket, setEditStorageBucket] = React.useState('');
       const [editAppId, setEditAppId] = React.useState('');
@@ -162,6 +163,7 @@ include_once __DIR__ . '/header.php';
         setEditingOp(op);
         setEditProject(op.firebaseProject || '');
         setEditApiKey(op.firebaseApiKey || '');
+        setEditDatabaseUrl(op.firebaseDatabaseUrl || op.databaseURL || '');
         setEditAuthDomain(op.firebaseAuthDomain || (op.firebaseProject ? op.firebaseProject + '.firebaseapp.com' : ''));
         setEditStorageBucket(op.storageBucket || (op.firebaseProject ? op.firebaseProject + '.appspot.com' : ''));
         setEditAppId(op.appId || '');
@@ -189,6 +191,7 @@ include_once __DIR__ . '/header.php';
           const parsed = JSON.parse(cleanJson);
           if (parsed.apiKey) setEditApiKey(parsed.apiKey);
           if (parsed.projectId) setEditProject(parsed.projectId);
+          if (parsed.databaseURL || parsed.databaseUrl) setEditDatabaseUrl(parsed.databaseURL || parsed.databaseUrl);
           if (parsed.authDomain) setEditAuthDomain(parsed.authDomain);
           if (parsed.storageBucket) setEditStorageBucket(parsed.storageBucket);
           if (parsed.appId) setEditAppId(parsed.appId);
@@ -213,6 +216,7 @@ include_once __DIR__ . '/header.php';
               id: editingOp.id,
               firebaseProject: editProject.trim(),
               firebaseApiKey: editApiKey.trim(),
+              firebaseDatabaseUrl: editDatabaseUrl.trim(),
               firebaseAuthDomain: editAuthDomain.trim(),
               storageBucket: editStorageBucket.trim(),
               appId: editAppId.trim()
@@ -514,6 +518,14 @@ include_once __DIR__ . '/header.php';
                   <div>
                     <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Firebase Project ID</label>
                     <input type="text" className="search-input" value={editProject} onChange={(e) => setEditProject(e.target.value)} placeholder="adminto-custom-db" required />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#38bdf8', display: 'block', marginBottom: '4px', fontWeight: 700 }}>🔗 Firebase Database URL (`databaseURL`)</label>
+                    <input type="text" className="search-input" value={editDatabaseUrl} onChange={(e) => setEditDatabaseUrl(e.target.value)} placeholder="https://your-app-default-rtdb.asia-southeast1.firebasedatabase.app" />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#38bdf8', display: 'block', marginBottom: '4px', fontWeight: 700 }}>📲 App ID (`1:179278690008:android:bed6...`)</label>
+                    <input type="text" className="search-input" value={editAppId} onChange={(e) => setEditAppId(e.target.value)} placeholder="1:179278690008:android:bed6dc2ce712c491ca89ad" />
                   </div>
                   <div>
                     <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>API Key (`apiKey`)</label>
