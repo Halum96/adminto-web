@@ -189,10 +189,13 @@
     }
 
     .tab-btn {
-      padding: 0.65rem 1.1rem; border-radius: 10px; background: transparent; border: none;
-      color: var(--text-muted); font-weight: 600; cursor: pointer; min-height: 44px;
+      padding: 0.5rem 0.95rem; border-radius: 10px; background: transparent; border: 1px solid transparent;
+      color: var(--text-muted); font-weight: 600; cursor: pointer; min-height: 38px;
+      white-space: nowrap; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      font-size: 0.82rem; transition: all 0.2s ease;
     }
-    .tab-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
+    .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    .tab-btn.active { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35); }
 
     .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; text-align: left; }
     .data-table th, .data-table td { padding: 0.85rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.06); }

