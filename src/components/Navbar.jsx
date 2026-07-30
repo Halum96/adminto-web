@@ -68,14 +68,7 @@ export default function Navbar({
             <span>Refresh</span>
           </button>
 
-          <button 
-            className="btn-secondary nav-action-btn"
-            onClick={() => { if (onRefresh) onRefresh(); setMobileMenuOpen(false); }}
-            style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}
-            title="Send instant live ping request across all target devices"
-          >
-            <span>⊙ Ping All</span>
-          </button>
+
 
           {adminUser && (
             <button 

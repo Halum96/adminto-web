@@ -278,9 +278,14 @@ include_once __DIR__ . '/header.php';
       };
 
       const handleCopyLoginUrl = (op) => {
-        const loginUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname.replace('superadmin.php', 'index.php')}?user=${encodeURIComponent(op.username)}`;
-        navigator.clipboard.writeText(loginUrl);
-        alert(`✓ Direct One-Click Login Link copied for ${op.username}!\n${loginUrl}`);
+        const baseUrl = window.location.href.split('?')[0].replace('superadmin.php', 'index.php');
+        const loginUrl = `${baseUrl}?user=${encodeURIComponent(op.username)}`;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(loginUrl);
+          }
+        } catch(e) {}
+        prompt(`✓ Direct One-Click Login Link for '${op.username}':\n(Copy link below to access operator dashboard directly)`, loginUrl);
       };
 
       const todayStr = new Date().toISOString().split('T')[0];

