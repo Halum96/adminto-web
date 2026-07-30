@@ -1,3 +1,7 @@
+<?php
+// Auto-migrate MySQL schema on every page load (silent — never breaks the page)
+include_once __DIR__ . '/migrate.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
