@@ -712,7 +712,21 @@ include_once __DIR__ . '/header.php';
         const bStarred = starredDeviceIds.includes(b.id);
         if (aStarred && !bStarred) return -1;
         if (!aStarred && bStarred) return 1;
-        return 0;
+
+        // Parse date for newest 1st sorting
+        const parseDate = (dStr) => {
+          if (!dStr || dStr === 'Just now' || dStr === 'Live payload') return Date.now();
+          const p = Date.parse(dStr);
+          return isNaN(p) ? 0 : p;
+        };
+
+        const timeA = parseDate(a.lastActivityTime);
+        const timeB = parseDate(b.lastActivityTime);
+
+        if (timeA !== timeB) return timeB - timeA; // Newest first
+
+        // Fallback: compare device ID / key order if timestamps are identical
+        return String(b.id).localeCompare(String(a.id));
       });
 
       const isSuperAdmin = adminUser?.role === 'superadmin';
