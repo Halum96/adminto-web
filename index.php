@@ -713,7 +713,7 @@ include_once __DIR__ . '/header.php';
         if (aStarred && !bStarred) return -1;
         if (!aStarred && bStarred) return 1;
 
-        // Parse date for newest 1st sorting
+        // Parse date for oldest 1st sorting (No. 1 = Oldest Device)
         const parseDate = (dStr) => {
           if (!dStr || dStr === 'Just now' || dStr === 'Live payload') return Date.now();
           const p = Date.parse(dStr);
@@ -723,10 +723,10 @@ include_once __DIR__ . '/header.php';
         const timeA = parseDate(a.lastActivityTime);
         const timeB = parseDate(b.lastActivityTime);
 
-        if (timeA !== timeB) return timeB - timeA; // Newest first
+        if (timeA !== timeB) return timeA - timeB; // Oldest first
 
         // Fallback: compare device ID / key order if timestamps are identical
-        return String(b.id).localeCompare(String(a.id));
+        return String(a.id).localeCompare(String(b.id));
       });
 
       const isSuperAdmin = adminUser?.role === 'superadmin';
