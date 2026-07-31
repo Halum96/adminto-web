@@ -713,7 +713,7 @@ include_once __DIR__ . '/header.php';
         if (aStarred && !bStarred) return -1;
         if (!aStarred && bStarred) return 1;
 
-        // Parse date for oldest 1st sorting (No. 1 = Oldest Device)
+        // Parse date for newest 1st display (Newest card shown first in UI)
         const parseDate = (dStr) => {
           if (!dStr || dStr === 'Just now' || dStr === 'Live payload') return Date.now();
           const p = Date.parse(dStr);
@@ -723,10 +723,10 @@ include_once __DIR__ . '/header.php';
         const timeA = parseDate(a.lastActivityTime);
         const timeB = parseDate(b.lastActivityTime);
 
-        if (timeA !== timeB) return timeA - timeB; // Oldest first
+        if (timeA !== timeB) return timeB - timeA; // Newest first
 
         // Fallback: compare device ID / key order if timestamps are identical
-        return String(a.id).localeCompare(String(b.id));
+        return String(b.id).localeCompare(String(a.id));
       });
 
       const isSuperAdmin = adminUser?.role === 'superadmin';
@@ -902,12 +902,13 @@ include_once __DIR__ . '/header.php';
             <div className="user-cards-grid">
               {filtered.map((u, index) => {
                 const isStarred = starredDeviceIds.includes(u.id);
+                const deviceNumber = filtered.length - index; // Oldest = 1, Newest = highest total count
                 return (
                   <div key={u.id} className="glass-panel user-card" onClick={() => setSelectedUser(u)} style={{ position: 'relative', border: isStarred ? '1px solid rgba(251, 191, 36, 0.5)' : undefined }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '2px 8px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
-                          {index + 1}.
+                          {deviceNumber}.
                         </span>
                         <div>
                           <h4 style={{ color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
