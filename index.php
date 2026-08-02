@@ -348,11 +348,30 @@ include_once __DIR__ . '/header.php';
 
             setFbConnectionStatus(prev => ({ ...prev, status: 'connecting', message: `Connecting to Firebase: ${rawUrl.substring(0, 45)}...` }));
 
-            const response = await fetch(jsonEndpoint);
-            if (!response.ok) {
-              throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+            let response;
+            let dbData = null;
+            let usingProxy = false;
+
+            try {
+              response = await fetch(jsonEndpoint);
+              if (!response.ok) {
+                throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+              }
+              dbData = await response.json();
+            } catch (directErr) {
+              console.warn("Direct Firebase fetch failed, trying local proxy...", directErr);
+              usingProxy = true;
+              try {
+                const proxyUrl = `firebase_proxy.php?url=${encodeURIComponent(rawUrl)}`;
+                response = await fetch(proxyUrl);
+                if (!response.ok) {
+                  throw new Error(`Proxy HTTP Error ${response.status}: ${response.statusText}`);
+                }
+                dbData = await response.json();
+              } catch (proxyErr) {
+                throw new Error(`Direct & Proxy Fetch Failed: ${directErr.message || directErr}`);
+              }
             }
-            const dbData = await response.json();
 
             if (!dbData) {
               setFbConnectionStatus({ status: 'warning', message: 'Connected to Firebase, but the database is empty.', count: 0 });
@@ -511,7 +530,7 @@ include_once __DIR__ . '/header.php';
               setUsers(liveUsers);
               setFbConnectionStatus({
                 status: 'success',
-                message: `Connected successfully to database.`,
+                message: `Connected successfully to database${usingProxy ? ' (via Proxy Bypass)' : ''}.`,
                 count: liveUsers.length
               });
             }
