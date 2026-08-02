@@ -331,9 +331,24 @@ include_once __DIR__ . '/header.php';
                       adminUser?.firebaseDatabaseUrl ||
                       adminUser?.firebaseConfig?.databaseURL ||
                       '').trim();
-            if (!rawUrl) {
-              setFbConnectionStatus({ status: 'warning', message: 'No Firebase database URL configured.', count: 0 });
-              return;
+
+            // Detect if rawUrl is an API Key (starts with AIzaSy...) instead of a valid database URL
+            if (/AIzaSy/i.test(rawUrl) || (!rawUrl.includes('firebasedatabase.app') && !rawUrl.includes('firebaseio.com'))) {
+              // Extract Project ID to reconstruct real database URL on the fly
+              const proj = (fbProject || adminUser?.firebaseProject || '').trim();
+              if (proj) {
+                rawUrl = `https://${proj}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+              } else if (!rawUrl) {
+                setFbConnectionStatus({ status: 'warning', message: 'No Firebase database URL configured.', count: 0 });
+                return;
+              } else {
+                setFbConnectionStatus({
+                  status: 'error',
+                  message: `⚠️ Config Error: Firebase Database URL field contains an API Key (${rawUrl.substring(0, 10)}...). Please enter your Database URL in ⚙️ Settings.`,
+                  count: 0
+                });
+                return;
+              }
             }
 
             // Auto-fix URL protocol if missing (relative paths safety)

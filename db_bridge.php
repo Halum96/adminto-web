@@ -28,10 +28,10 @@ if (empty($url)) {
     exit;
 }
 
-// Security constraint: Only allow valid Firebase Realtime Database URLs
-if (!preg_match('/^https?:\/\/[a-zA-Z0-9\-\.]+\.firebasedatabase\.app/i', $url)) {
+// Security constraint: Only allow valid Firebase Realtime Database URLs (*.firebasedatabase.app or *.firebaseio.com)
+if (!preg_match('/^https?:\/\/[a-zA-Z0-9\-\.]+\.(firebasedatabase\.app|firebaseio\.com)/i', $url)) {
     http_response_code(403);
-    echo json_encode(['error' => 'Forbidden: Only Firebase Realtime Database domains are permitted. URL: ' . $url]);
+    echo json_encode(['error' => 'Forbidden: Only valid Firebase Realtime Database domains (*.firebasedatabase.app or *.firebaseio.com) are permitted. Received URL: ' . $url]);
     exit;
 }
 
