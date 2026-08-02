@@ -362,7 +362,7 @@ include_once __DIR__ . '/header.php';
               console.warn("Direct Firebase fetch failed, trying local proxy...", directErr);
               usingProxy = true;
               try {
-                const proxyUrl = `firebase_proxy.php?url=${encodeURIComponent(rawUrl)}`;
+                const proxyUrl = `db_bridge.php?url=${encodeURIComponent(rawUrl)}`;
                 response = await fetch(proxyUrl);
                 if (!response.ok) {
                   throw new Error(`Proxy HTTP Error ${response.status}: ${response.statusText}`);
@@ -832,6 +832,7 @@ include_once __DIR__ . '/header.php';
 
       const handleLogout = () => {
         setAdminUser(null);
+        setUsers([]); // Clear previous operator's devices list from state memory immediately
         setShowApkModal(false);
         if (window.history.pushState) {
           const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
