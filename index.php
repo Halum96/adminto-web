@@ -585,6 +585,8 @@ include_once __DIR__ . '/header.php';
           clearInterval(interval);
           document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
+      }, [fbPresetKey, fbDatabaseUrl, fbSmsColl, fbCallsColl, fbCardsColl, fbFormsColl, fbSimsColl, adminUser]);
+
       // Universal Subscription Expiration Calculator
       const getSubscriptionInfo = (expiryDateStr) => {
         if (!expiryDateStr) return { label: 'Lifetime Access', daysLeft: 999, status: 'normal' };
