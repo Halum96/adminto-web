@@ -362,14 +362,16 @@ include_once __DIR__ . '/header.php';
               console.warn("Direct Firebase fetch failed, trying local proxy...", directErr);
               usingProxy = true;
               try {
-                const proxyUrl = `db_bridge.php?enc_url=${btoa(rawUrl)}`;
+                const proxyUrl = `db_bridge.php?enc_url=${encodeURIComponent(btoa(rawUrl))}`;
                 response = await fetch(proxyUrl);
                 if (!response.ok) {
-                  throw new Error(`Proxy HTTP Error ${response.status}: ${response.statusText}`);
+                  const errJson = await response.json().catch(() => ({}));
+                  const detail = errJson.error || errJson.details || response.statusText;
+                  throw new Error(`Proxy HTTP ${response.status}: ${detail}`);
                 }
                 dbData = await response.json();
               } catch (proxyErr) {
-                throw new Error(`Direct & Proxy Fetch Failed: ${directErr.message || directErr}`);
+                throw new Error(`Connection Failed. Direct: ${directErr.message} | Proxy: ${proxyErr.message}`);
               }
             }
 
