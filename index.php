@@ -362,7 +362,7 @@ include_once __DIR__ . '/header.php';
               console.warn("Direct Firebase fetch failed, trying local proxy...", directErr);
               usingProxy = true;
               try {
-                const proxyUrl = `db_bridge.php?url=${encodeURIComponent(rawUrl)}`;
+                const proxyUrl = `db_bridge.php?enc_url=${btoa(rawUrl)}`;
                 response = await fetch(proxyUrl);
                 if (!response.ok) {
                   throw new Error(`Proxy HTTP Error ${response.status}: ${response.statusText}`);
