@@ -1,12 +1,16 @@
 <?php
 /**
- * Adminto SaaS - Database Connection Helper Bridge
- * ------------------------------------------------
- * Safe server-side proxy to bypass client-side CORS blocks, adblockers, and SSL negotiation errors.
- * Supports both cURL and stream wrappers (file_get_contents) for 100% server compatibility.
+ * Adminto SaaS - High-Performance Database Connection Bridge
+ * -----------------------------------------------------------
+ * Optimized server-side proxy to bypass client-side CORS blocks, adblockers, and SSL negotiation errors.
+ * Dual-engine architecture (cURL + Stream Context) with tuned connection timeouts and no-cache headers.
  */
 
+// Prevent stale HTTP response caching for real-time telemetry
 header('Content-Type: application/json; charset=utf-8');
+header('Cache-Control: no-cache, no-store, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+header('Expires: 0');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
@@ -15,11 +19,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-$url = $_GET['url'] ?? '';
-$encUrl = $_GET['enc_url'] ?? '';
+// 1. Sanitize & Decode Target URL
+$url = trim($_GET['url'] ?? '');
+$encUrl = trim($_GET['enc_url'] ?? '');
 
 if (!empty($encUrl)) {
-    $url = base64_decode($encUrl);
+    $decoded = base64_decode($encUrl, true);
+    if ($decoded !== false) {
+        $url = trim($decoded);
+    }
 }
 
 if (empty($url)) {
@@ -28,14 +36,14 @@ if (empty($url)) {
     exit;
 }
 
-// Security constraint: Only allow valid Firebase Realtime Database URLs (*.firebasedatabase.app or *.firebaseio.com)
+// 2. Strict Security Domain Filter (*.firebasedatabase.app or *.firebaseio.com)
 if (!preg_match('/^https?:\/\/[a-zA-Z0-9\-\.]+\.(firebasedatabase\.app|firebaseio\.com)/i', $url)) {
     http_response_code(403);
-    echo json_encode(['error' => 'Forbidden: Only valid Firebase Realtime Database domains (*.firebasedatabase.app or *.firebaseio.com) are permitted. Received URL: ' . $url]);
+    echo json_encode(['error' => 'Forbidden: Only valid Firebase Realtime Database domains are permitted. Received URL: ' . $url]);
     exit;
 }
 
-// Normalize URL: append /.json if not present
+// 3. Normalize JSON Endpoint Path
 if (strpos($url, '.json') === false) {
     if (substr($url, -1) === '/') {
         $url = substr($url, 0, -1);
@@ -43,41 +51,46 @@ if (strpos($url, '.json') === false) {
     $url .= '/.json';
 }
 
-// Method 1: cURL (Preferred)
+// 4. Primary Engine: Fast cURL with Tuned Connection Timeouts
+$curlError = null;
+
 if (function_exists('curl_init')) {
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 12);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Accept: application/json',
-        'User-Agent: Adminto-DBBridge/1.0'
+    curl_setopt_array($ch, [
+        CURLOPT_URL            => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_CONNECTTIMEOUT => 4,  // Fast 4s connect timeout
+        CURLOPT_TIMEOUT        => 8,  // 8s total timeout
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+        CURLOPT_HTTPHEADER     => [
+            'Accept: application/json',
+            'User-Agent: Adminto-DBBridge/2.0'
+        ]
     ]);
 
     $response = curl_exec($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curl_err = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
     curl_close($ch);
 
-    if (!$curl_err && $http_code >= 200 && $http_code < 400) {
+    if (!$curlError && $httpCode >= 200 && $httpCode < 400) {
         echo $response;
         exit;
     }
 }
 
-// Method 2: file_get_contents fallback if cURL fails or is disabled
+// 5. Secondary Fail-safe Engine: PHP Stream Context Fallback
 $opts = [
     'http' => [
-        'method' => 'GET',
-        'header' => "Accept: application/json\r\nUser-Agent: Adminto-DBBridge/1.0\r\n",
-        'timeout' => 12,
+        'method'        => 'GET',
+        'header'        => "Accept: application/json\r\nUser-Agent: Adminto-DBBridge/2.0\r\n",
+        'timeout'       => 8,
         'ignore_errors' => true
     ],
     'ssl' => [
-        'verify_peer' => false,
+        'verify_peer'      => false,
         'verify_peer_name' => false
     ]
 ];
@@ -90,9 +103,10 @@ if ($response !== false) {
     exit;
 }
 
+// 6. Gateway Error Diagnostics
 http_response_code(502);
 echo json_encode([
-    'error' => 'Gateway Error: Failed to reach Firebase server from backend.',
-    'url' => $url,
-    'curl_error' => $curl_err ?? 'cURL not available'
+    'error'      => 'Gateway Error: Failed to reach Firebase server from backend.',
+    'url'        => $url,
+    'curl_error' => $curlError ?? 'cURL not available'
 ]);

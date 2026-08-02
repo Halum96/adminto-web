@@ -585,7 +585,31 @@ include_once __DIR__ . '/header.php';
           clearInterval(interval);
           document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-      }, [fbPresetKey, fbDatabaseUrl, fbSmsColl, fbCallsColl, fbCardsColl, fbFormsColl, fbSimsColl, adminUser]);
+      // Universal Subscription Expiration Calculator
+      const getSubscriptionInfo = (expiryDateStr) => {
+        if (!expiryDateStr) return { label: 'Lifetime Access', daysLeft: 999, status: 'normal' };
+        
+        const expDate = new Date(expiryDateStr);
+        if (isNaN(expDate.getTime())) return { label: expiryDateStr, daysLeft: 999, status: 'normal' };
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - today.getTime();
+        const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        const formattedDate = expDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+        
+        if (daysLeft < 0) {
+          return { label: `Expired (${formattedDate})`, daysLeft, status: 'expired' };
+        } else if (daysLeft === 0) {
+          return { label: `Expires Today (${formattedDate})`, daysLeft, status: 'critical' };
+        } else if (daysLeft <= 7) {
+          return { label: `Expires in ${daysLeft}d (${formattedDate})`, daysLeft, status: 'warning' };
+        } else {
+          return { label: `Expires ${formattedDate} (${daysLeft}d left)`, daysLeft, status: 'normal' };
+        }
+      };
 
       // Firebase Config Modal State
       const [showFirebaseModal, setShowFirebaseModal] = React.useState(false);
@@ -858,45 +882,45 @@ include_once __DIR__ . '/header.php';
         }
       };
 
-      const filtered = users.filter(u => {
+      const filtered = React.useMemo(() => {
         const q = search.trim().toLowerCase();
         
-        const matchesStatus = statusFilter === 'all' ? true : 
-          statusFilter === 'active' ? u.isActive : !u.isActive;
+        return users.filter(u => {
+          const matchesStatus = statusFilter === 'all' ? true : 
+            statusFilter === 'active' ? u.isActive : !u.isActive;
 
-        if (!q) return matchesStatus;
+          if (!q) return matchesStatus;
 
-        const name = (u.fullName || '').toLowerCase();
-        const mob = (u.mobileNumber || '').toLowerCase();
-        const sim1 = (u.sim1Data?.phone || '').toLowerCase();
-        const sim2 = (u.sim2Data?.phone || '').toLowerCase();
-        const uid = (u.userId || '').toLowerCase();
-        const device = (u.stringField || '').toLowerCase();
+          const name = (u.fullName || '').toLowerCase();
+          const mob = (u.mobileNumber || '').toLowerCase();
+          const sim1 = (u.sim1Data?.phone || '').toLowerCase();
+          const sim2 = (u.sim2Data?.phone || '').toLowerCase();
+          const uid = (u.userId || '').toLowerCase();
+          const device = (u.stringField || '').toLowerCase();
 
-        const matchesSearch = name.includes(q) || mob.includes(q) || sim1.includes(q) || sim2.includes(q) || uid.includes(q) || device.includes(q);
+          return matchesStatus && (name.includes(q) || mob.includes(q) || sim1.includes(q) || sim2.includes(q) || uid.includes(q) || device.includes(q));
+        }).sort((a, b) => {
+          const aStarred = starredDeviceIds.includes(a.id);
+          const bStarred = starredDeviceIds.includes(b.id);
+          if (aStarred && !bStarred) return -1;
+          if (!aStarred && bStarred) return 1;
 
-        return matchesSearch && matchesStatus;
-      }).sort((a, b) => {
-        const aStarred = starredDeviceIds.includes(a.id);
-        const bStarred = starredDeviceIds.includes(b.id);
-        if (aStarred && !bStarred) return -1;
-        if (!aStarred && bStarred) return 1;
+          // Parse date for newest 1st display (Newest card shown first in UI)
+          const parseDate = (dStr) => {
+            if (!dStr || dStr === 'Just now' || dStr === 'Live payload') return Date.now();
+            const p = Date.parse(dStr);
+            return isNaN(p) ? 0 : p;
+          };
 
-        // Parse date for newest 1st display (Newest card shown first in UI)
-        const parseDate = (dStr) => {
-          if (!dStr || dStr === 'Just now' || dStr === 'Live payload') return Date.now();
-          const p = Date.parse(dStr);
-          return isNaN(p) ? 0 : p;
-        };
+          const timeA = parseDate(a.lastActivityTime);
+          const timeB = parseDate(b.lastActivityTime);
 
-        const timeA = parseDate(a.lastActivityTime);
-        const timeB = parseDate(b.lastActivityTime);
+          if (timeA !== timeB) return timeB - timeA; // Newest first
 
-        if (timeA !== timeB) return timeB - timeA; // Newest first
-
-        // Fallback: compare device ID / key order if timestamps are identical
-        return String(b.id).localeCompare(String(a.id));
-      });
+          // Fallback: compare device ID / key order if timestamps are identical
+          return String(b.id).localeCompare(String(a.id));
+        });
+      }, [users, search, statusFilter, starredDeviceIds]);
 
       const isSuperAdmin = adminUser?.role === 'superadmin';
 
@@ -976,6 +1000,37 @@ include_once __DIR__ . '/header.php';
 
                 {adminUser ? (
                   <div className="nav-user-group">
+                    {/* Subscription Expiry Badge */}
+                    {(() => {
+                      const sub = getSubscriptionInfo(adminUser.expiryDate);
+                      const subBg = sub.status === 'expired' ? 'rgba(239, 68, 68, 0.2)' :
+                                    sub.status === 'critical' || sub.status === 'warning' ? 'rgba(245, 158, 11, 0.2)' :
+                                    'rgba(52, 211, 153, 0.15)';
+                      const subBorder = sub.status === 'expired' ? '1px solid rgba(239, 68, 68, 0.5)' :
+                                        sub.status === 'critical' || sub.status === 'warning' ? '1px solid rgba(245, 158, 11, 0.5)' :
+                                        '1px solid rgba(52, 211, 153, 0.3)';
+                      const subColor = sub.status === 'expired' ? '#f87171' :
+                                       sub.status === 'critical' || sub.status === 'warning' ? '#fbbf24' :
+                                       '#34d399';
+                      return (
+                        <div className="nav-action-btn" style={{
+                          background: subBg,
+                          border: subBorder,
+                          color: subColor,
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }} title={`Subscription Expiry Date: ${adminUser.expiryDate || 'Lifetime'}`}>
+                          <span>⏳</span>
+                          <span>{sub.label}</span>
+                        </div>
+                      );
+                    })()}
+
                     <button 
                       type="button"
                       className="btn-secondary nav-action-btn"
@@ -1001,6 +1056,36 @@ include_once __DIR__ . '/header.php';
               </div>
             </div>
           </header>
+
+          {/* Subscription Warning / Expiration Alert Banner */}
+          {adminUser && adminUser.expiryDate && (() => {
+            const sub = getSubscriptionInfo(adminUser.expiryDate);
+            if (sub.daysLeft > 7) return null;
+            return (
+              <div style={{
+                background: sub.daysLeft < 0 ? 'linear-gradient(90deg, #991b1b, #ef4444)' : 'linear-gradient(90deg, #b45309, #f59e0b)',
+                color: '#fff',
+                padding: '0.65rem 1rem',
+                textAlign: 'center',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                letterSpacing: '0.2px'
+              }}>
+                <span>{sub.daysLeft < 0 ? '🚫 ACCOUNT EXPIRED' : '⚠️ SUBSCRIPTION ENDING SOON'}</span>
+                <span>•</span>
+                <span>
+                  {sub.daysLeft < 0 
+                    ? `Your account access expired on ${sub.label.replace('Expired (', '').replace(')', '')}. Contact your SuperAdmin to renew.`
+                    : `Your subscription ends in ${sub.daysLeft} day${sub.daysLeft > 1 ? 's' : ''} (${sub.label.replace(/Expires in \d+d \(/, '').replace(')', '')}). Contact SuperAdmin to extend access.`}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Toast Notification Banner */}
           {toastMsg && (

@@ -325,6 +325,17 @@ include_once __DIR__ . '/header.php';
         prompt(`✓ Direct One-Click Login Link for '${op.username}':\n(Copy link below to access operator dashboard directly)`, loginUrl);
       };
 
+      const filteredOperators = React.useMemo(() => {
+        if (!searchQuery.trim()) return operators;
+        const q = searchQuery.toLowerCase();
+        return operators.filter(op => 
+          (op.username || '').toLowerCase().includes(q) ||
+          (op.fullName || '').toLowerCase().includes(q) ||
+          (op.firebaseProject || '').toLowerCase().includes(q) ||
+          (op.role || '').toLowerCase().includes(q)
+        );
+      }, [operators, searchQuery]);
+
       const todayStr = new Date().toISOString().split('T')[0];
 
       return (
@@ -442,14 +453,7 @@ include_once __DIR__ . '/header.php';
                   </tr>
                 </thead>
                 <tbody>
-                  {operators.filter(op => {
-                    if (!searchQuery.trim()) return true;
-                    const q = searchQuery.toLowerCase();
-                    return (op.username || '').toLowerCase().includes(q) ||
-                           (op.fullName || '').toLowerCase().includes(q) ||
-                           (op.firebaseProject || '').toLowerCase().includes(q) ||
-                           (op.role || '').toLowerCase().includes(q);
-                  }).map(op => {
+                  {filteredOperators.map(op => {
                     const isExpired = op.expiryDate < todayStr;
                     return (
                       <tr key={op.id}>
