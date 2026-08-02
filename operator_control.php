@@ -16,7 +16,7 @@ include_once __DIR__ . '/header.php';
       // Form fields for adding new operator
       const [username, setUsername] = React.useState('');
       const [password, setPassword] = React.useState('');
-      const [firebaseProject, setFirebaseProject] = React.useState('adminto-op-custom');
+      const [firebaseProject, setFirebaseProject] = React.useState('');
       const [firebaseApiKey, setFirebaseApiKey] = React.useState('');
       const [firebaseDatabaseUrl, setFirebaseDatabaseUrl] = React.useState('');
       const [firebaseAuthDomain, setFirebaseAuthDomain] = React.useState('');
@@ -91,7 +91,9 @@ include_once __DIR__ . '/header.php';
             alert('New Operator account & assigned Firebase project provisioned successfully!');
             setUsername('');
             setPassword('');
+            setFirebaseProject('');
             setFirebaseApiKey('');
+            setFirebaseDatabaseUrl('');
             setFirebaseAuthDomain('');
             setStorageBucket('');
             setAppId('');
