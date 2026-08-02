@@ -94,7 +94,7 @@ header('Vary: Accept-Encoding');
     }
 
     .navbar-header-top {
-      display: flex; align-items: center; justify-content: space-between; width: 100%;
+      display: flex; align-items: center; justify-content: space-between; width: auto;
     }
 
     .brand-logo { display: flex; align-items: center; gap: 10px; }
@@ -357,6 +357,7 @@ header('Vary: Accept-Encoding');
     /* Mobile Responsive Utilities (Phone Optimization) */
     @media (max-width: 768px) {
       .navbar-content { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+      .navbar-header-top { width: 100%; }
       .triple-dash-btn { display: flex; }
       .search-container { max-width: 100%; }
       .search-input { max-width: 100%; }
