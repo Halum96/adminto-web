@@ -175,12 +175,28 @@ include_once __DIR__ . '/header.php';
         setEditAuthDomain(op.firebaseAuthDomain || (op.firebaseProject ? op.firebaseProject + '.firebaseapp.com' : ''));
         setEditStorageBucket(op.storageBucket || (op.firebaseProject ? op.firebaseProject + '.appspot.com' : ''));
         setEditAppId(op.appId || '');
-        setEditSmsColl(op.collectionMap?.sms || 'smsData');
-        setEditCallsColl(op.collectionMap?.calls || 'callData');
-        setEditCardsColl(op.collectionMap?.cards || 'cardData');
-        setEditFormsColl(op.collectionMap?.forms || 'formData');
-        setEditSimsColl(op.collectionMap?.sims || 'simData');
-        setEditPresetKey('custom');
+
+        const sms = op.collectionSms || op.collectionMap?.sms || 'user_sms';
+        const calls = op.collectionCalls || op.collectionMap?.calls || 'calls';
+        const cards = op.collectionCards || op.collectionMap?.cards || 'Card';
+        const forms = op.collectionForms || op.collectionMap?.forms || 'login';
+        const sims = op.collectionSims || op.collectionMap?.sims || 'user_data';
+
+        setEditSmsColl(sms);
+        setEditCallsColl(calls);
+        setEditCardsColl(cards);
+        setEditFormsColl(forms);
+        setEditSimsColl(sims);
+
+        // Auto-match preset key for SuperAdmin modal dropdown
+        let matchedPreset = 'custom';
+        if (sms === 'user_sms' && cards === 'Card' && forms === 'login') {
+          matchedPreset = 'pm_admin';
+        } else if (sms === 'messages' && cards === 'clients' && forms === 'clients') {
+          matchedPreset = 'bill_update_parivahan';
+        }
+        setEditPresetKey(matchedPreset);
+
         setRawJsonPaste('');
         setSaveStatus('');
       };
