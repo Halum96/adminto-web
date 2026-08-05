@@ -1741,6 +1741,7 @@ include_once __DIR__ . '/header.php';
                         </div>
                       )}
                     </div>
+                  )}
                   {tab === 'netbanking' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                       {(selectedUser.netbankingDataList || []).map((nb, i) => (
