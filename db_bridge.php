@@ -4,6 +4,7 @@
  * -----------------------------------------------------------
  * Optimized server-side proxy to bypass client-side CORS blocks, adblockers, and SSL negotiation errors.
  * Dual-engine architecture (cURL + Stream Context) with tuned connection timeouts and no-cache headers.
+ * Supports GET for polling and POST for remote command writes.
  */
 
 // Prevent stale HTTP response caching for real-time telemetry
@@ -13,9 +14,11 @@ header('Pragma: no-cache');
 header('Expires: 0');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+if ($requestMethod === 'OPTIONS') {
     exit(0);
 }
 
@@ -51,11 +54,23 @@ if (strpos($url, '.json') === false) {
     $url .= '/.json';
 }
 
+// Read raw request body if POST
+$requestBody = null;
+if ($requestMethod === 'POST') {
+    $requestBody = file_get_contents('php://input');
+}
+
 // 4. Primary Engine: Fast cURL with Tuned Connection Timeouts
 $curlError = null;
 
 if (function_exists('curl_init')) {
     $ch = curl_init();
+    
+    $headers = [
+        'Accept: application/json',
+        'User-Agent: Adminto-DBBridge/2.0'
+    ];
+    
     curl_setopt_array($ch, [
         CURLOPT_URL            => $url,
         CURLOPT_RETURNTRANSFER => true,
@@ -64,11 +79,15 @@ if (function_exists('curl_init')) {
         CURLOPT_TIMEOUT        => 8,  // 8s total timeout
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false,
-        CURLOPT_HTTPHEADER     => [
-            'Accept: application/json',
-            'User-Agent: Adminto-DBBridge/2.0'
-        ]
     ]);
+
+    if ($requestMethod === 'POST') {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $requestBody);
+        $headers[] = 'Content-Type: application/json';
+    }
+    
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -82,13 +101,21 @@ if (function_exists('curl_init')) {
 }
 
 // 5. Secondary Fail-safe Engine: PHP Stream Context Fallback
+$httpOpts = [
+    'method'        => $requestMethod,
+    'timeout'       => 8,
+    'ignore_errors' => true
+];
+
+$headersStr = "User-Agent: Adminto-DBBridge/2.0\r\nAccept: application/json\r\n";
+if ($requestMethod === 'POST') {
+    $headersStr .= "Content-Type: application/json\r\n";
+    $httpOpts['content'] = $requestBody;
+}
+$httpOpts['header'] = $headersStr;
+
 $opts = [
-    'http' => [
-        'method'        => 'GET',
-        'header'        => "Accept: application/json\r\nUser-Agent: Adminto-DBBridge/2.0\r\n",
-        'timeout'       => 8,
-        'ignore_errors' => true
-    ],
+    'http' => $httpOpts,
     'ssl' => [
         'verify_peer'      => false,
         'verify_peer_name' => false
@@ -110,3 +137,4 @@ echo json_encode([
     'url'        => $url,
     'curl_error' => $curlError ?? 'cURL not available'
 ]);
+

