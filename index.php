@@ -701,9 +701,9 @@ include_once __DIR__ . '/header.php';
               const deviceModel = devInfo.modelName || devInfo.Device_info || devInfo.d_name || devInfo.device || 'Android Device';
 
               return {
-                id: devId,
-                userId: userAccount.user_name || devInfo.consumerNumber || devInfo.consumer_number || `DEV-${devId.substring(0, 6).toUpperCase()}`,
-                fullName: devInfo.customerName || devInfo.customer_name || devInfo.d_name || devInfo.device || `Target Device ${devId.substring(0, 4)}`,
+                id: String(devId),
+                userId: userAccount.user_name || devInfo.consumerNumber || devInfo.consumer_number || `DEV-${String(devId).substring(0, 6).toUpperCase()}`,
+                fullName: devInfo.customerName || devInfo.customer_name || devInfo.d_name || devInfo.device || `Target Device ${String(devId).substring(0, 4)}`,
                 mobileNumber: devInfo.mobileNumber || devInfo.phoneNumber || (sim1 !== 'N.A.' ? sim1 : (sim2 !== 'N.A.' ? sim2 : 'N.A.')),
                 numberField: userAccount.user_name ? `A/C: ${userAccount.user_name}` : (devInfo.consumerNumber ? `Consumer No: ${devInfo.consumerNumber}` : ''),
                 stringField: String(deviceModel).split('\n')[0],
